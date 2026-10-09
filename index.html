@@ -103,7 +103,9 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
   background-image:linear-gradient(var(--map-grid) 1px,transparent 1px),linear-gradient(90deg,var(--map-grid) 1px,transparent 1px);
   background-size:40px 40px}
 .map.has-bg{background-size:100% 100%;background-repeat:no-repeat}
-.map-note{position:absolute;left:12px;bottom:10px;font-size:.8rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:6px}
+.map-note{position:absolute;left:12px;right:12px;bottom:10px;width:fit-content;font-size:.85rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:4px 10px;border-radius:6px}
+.map.has-bg{margin-inline:auto}
+@media (max-height:520px){.top{position:static}}
 .map-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;color:var(--muted)}
 .zone{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translate(-50%,-34px);width:max-content;max-width:46%}
 .ring{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:4px dashed var(--muted);font-family:var(--display);font-size:1.9rem;font-weight:700;color:var(--muted);position:relative}
@@ -449,12 +451,14 @@ function renderMap(){
   el.classList.toggle('has-bg',bg);el.classList.toggle('editing',edit);
   el.style.backgroundImage=bg?`url("${c.bg}")`:'';
   el.style.aspectRatio=bg&&c.w&&c.h?`${c.w} / ${c.h}`:'';
+  el.style.maxWidth=bg&&c.w&&c.h?`calc(72vh * ${(c.w/c.h).toFixed(4)})`:'';
   $('#mapTools').innerHTML=edit
     ?`<button type="button" class="btn small" data-act="newZone">Agregar espacio</button>
       <button type="button" class="btn small" data-act="pickBg">${bg?'Cambiar plano':'Subir plano'}</button>
       ${bg?'<button type="button" class="btn small" data-act="rmBg">Quitar plano</button>':''}
       <button type="button" class="btn small primary" data-act="editOff">Listo</button>`
     :'<button type="button" class="btn small" data-act="editOn">Editar mapa</button>';
+  if(!zs.length&&bg&&ready){el.innerHTML=`<div class="map-note">${edit?'Toca <b>Agregar espacio</b> para colocar tu primer tanque, cisterna o registro.':'Plano cargado. Toca <b>Editar mapa</b> y luego <b>Agregar espacio</b>.'}</div>`;return}
   if(!zs.length){el.innerHTML=`<div class="map-empty"><h3>${ready?'Aún no hay espacios en el mapa':'Cargando mapa…'}</h3>${ready?'<p>Toca <b>Editar mapa</b> y luego <b>Agregar espacio</b> para colocar tu primer tanque, cisterna o registro.</p>':''}</div>`;return}
   el.innerHTML=zs.map(z=>{
     const occ=ov.filter(v=>v.z===z.id),st=occ.length?worst(occ.map(v=>status(v.in,+z.limitMin))):'';

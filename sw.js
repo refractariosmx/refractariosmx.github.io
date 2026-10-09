@@ -1,6 +1,6 @@
 // Guarda la app en la tablet para que abra sin internet.
 // Al publicar una versión nueva, cambia el número de CACHE.
-const CACHE = 'espacios-confinados-v1';
+const CACHE = 'espacios-confinados-v2';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
   'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js',

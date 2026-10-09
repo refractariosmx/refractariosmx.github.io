@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#16202B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Espacios Confinados">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Control de Espacios Confinados</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: tablero de control para tablet. Barra superior fija con conteo en vivo,
+   cuatro vistas (Mapa, Escanear, Personal, Bitácora). Colores tomados de la
+   señalización de seguridad: azul = acción, verde = condición segura,
+   amarillo = advertencia, rojo = peligro. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --surface-2:#E3E8ED; --ink:#16202B; --muted:#55636F; --line:#C9D1D9;
+  --action:#0B5CAD; --action-ink:#FFFFFF;
+  --safe:#0A7F4F; --safe-soft:#D5F0E3;
+  --warn:#9A5B00; --warn-soft:#FBE9C6;
+  --danger:#C22B1E; --danger-soft:#F8D9D5;
+  --hazard:#F2C200; --hazard-dark:#16202B;
+  --map-bg:#F7F9FB; --map-grid:#D5DDE5;
+  --shadow:0 1px 2px rgba(22,32,43,.08),0 6px 18px rgba(22,32,43,.07);
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F151B; --surface:#18212A; --surface-2:#222D38; --ink:#E8EDF2; --muted:#9AA8B5; --line:#33414E;
+  --action:#4C9BEA; --action-ink:#06121E;
+  --safe:#35C98A; --safe-soft:#123A2A;
+  --warn:#F0B03E; --warn-soft:#3D2F10;
+  --danger:#FF7566; --danger-soft:#451A15;
+  --map-bg:#131C24; --map-grid:#24313D;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
+  color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F151B; --surface:#18212A; --surface-2:#222D38; --ink:#E8EDF2; --muted:#9AA8B5; --line:#33414E;
+  --action:#4C9BEA; --action-ink:#06121E;
+  --safe:#35C98A; --safe-soft:#123A2A;
+  --warn:#F0B03E; --warn-soft:#3D2F10;
+  --danger:#FF7566; --danger-soft:#451A15;
+  --map-bg:#131C24; --map-grid:#24313D;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;text-wrap:balance;line-height:1.1}
+h2{font-size:1.6rem;letter-spacing:.01em}
+h3{font-size:1.25rem}
+p{margin:0}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--action);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:.78rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* Barra superior */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.stripe{height:8px;background:repeating-linear-gradient(-45deg,var(--hazard) 0 14px,var(--hazard-dark) 14px 28px)}
+.top-in{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:10px 20px;max-width:1280px;margin:0 auto}
+.brand{flex:1 1 220px;min-width:0}
+.brand h1{font-size:1.45rem;text-transform:uppercase;letter-spacing:.03em}
+.brand .clock{font-size:.9rem;color:var(--muted)}
+.count{display:flex;align-items:center;gap:10px;padding:6px 16px 6px 12px;border-radius:999px;background:var(--safe-soft);color:var(--safe);font-weight:600}
+.count b{font-family:var(--display);font-size:2rem;line-height:1}
+.count[data-st="over"]{background:var(--danger-soft);color:var(--danger)}
+.count[data-st="zero"]{background:var(--surface-2);color:var(--muted)}
+nav{display:flex;gap:6px;flex:1 1 100%;overflow-x:auto;margin:0 -4px;padding:0 4px 2px}
+nav button{flex:1 0 auto;min-height:48px;padding:0 18px;border:0;border-radius:10px;background:transparent;font-family:var(--display);font-size:1.2rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+nav button[aria-current="true"]{background:var(--ink);color:var(--surface)}
+
+main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
+.banner{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-weight:500}
+.view{display:flex;flex-direction:column;gap:16px}
+.head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer;text-align:center}
+.btn.primary{background:var(--action);border-color:var(--action);color:var(--action-ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{min-height:38px;padding:0 12px;font-size:.92rem}
+.btn.big{min-height:76px;font-family:var(--display);font-size:1.6rem;letter-spacing:.03em;text-transform:uppercase;width:100%}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn:active{transform:translateY(1px)}
+
+/* Mapa */
+.split{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.split{grid-template-columns:minmax(0,1fr)}}
+.map{position:relative;width:100%;max-width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  background-color:var(--map-bg);
+  background-image:linear-gradient(var(--map-grid) 1px,transparent 1px),linear-gradient(90deg,var(--map-grid) 1px,transparent 1px);
+  background-size:40px 40px}
+.map.has-bg{background-size:100% 100%;background-repeat:no-repeat}
+.map-note{position:absolute;left:12px;bottom:10px;font-size:.8rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:6px}
+.map-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;color:var(--muted)}
+.zone{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translate(-50%,-34px);width:max-content;max-width:46%}
+.ring{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:4px dashed var(--muted);font-family:var(--display);font-size:1.9rem;font-weight:700;color:var(--muted);position:relative}
+.zone.occ .ring{border-style:solid;border-color:var(--safe);color:var(--safe);background:var(--safe-soft)}
+.zone.occ .ring::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:3px solid var(--safe);opacity:0;animation:pulse 2s ease-out infinite}
+.zone[data-st="warn"] .ring{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.zone[data-st="warn"] .ring::after{border-color:var(--warn)}
+.zone[data-st="over"] .ring{border-color:var(--danger);color:var(--danger);background:var(--danger-soft)}
+.zone[data-st="over"] .ring::after{border-color:var(--danger);animation-duration:1s}
+@keyframes pulse{0%{transform:scale(.85);opacity:.7}100%{transform:scale(1.25);opacity:0}}
+@media (prefers-reduced-motion:reduce){.zone.occ .ring::after{animation:none;opacity:.35}}
+.zname{font-weight:600;font-size:.9rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 8px;text-align:center}
+.people{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;max-width:190px}
+.map.editing .zone{cursor:grab;touch-action:none}
+.map.editing .ring{box-shadow:0 0 0 3px var(--action)}
+
+.av{flex:none;display:inline-grid;place-items:center;width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--surface-2);color:var(--ink);font-weight:600;font-size:.95rem;border:3px solid var(--line)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av.s{width:32px;height:32px;font-size:.72rem;border-width:3px}
+.av.xl{width:112px;height:112px;font-size:2rem}
+[data-st="ok"]>.av,.av[data-st="ok"]{border-color:var(--safe)}
+[data-st="warn"]>.av,.av[data-st="warn"]{border-color:var(--warn)}
+[data-st="over"]>.av,.av[data-st="over"]{border-color:var(--danger)}
+
+.inside{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:10px;border-radius:10px;background:var(--bg)}
+.row .who{min-width:0}
+.row .who b{display:block;overflow-wrap:anywhere}
+.row .timer{font-family:var(--display);font-size:1.7rem;font-weight:700;text-align:right;line-height:1}
+.row .foot{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.85rem;font-weight:600;background:var(--surface-2);color:var(--muted)}
+.pill::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+[data-st="ok"] .pill,.pill.in{background:var(--safe-soft);color:var(--safe)}
+[data-st="warn"] .pill{background:var(--warn-soft);color:var(--warn)}
+[data-st="over"] .pill{background:var(--danger-soft);color:var(--danger)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+
+/* Escanear */
+.scan{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.scan{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field input,.field select{min-height:48px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);width:100%}
+.inline{display:flex;gap:8px}
+.inline input{flex:1;min-width:0}
+.result{min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border-width:3px}
+.result[data-kind="in"]{border-color:var(--safe);background:var(--safe-soft)}
+.result[data-kind="out"]{border-color:var(--action)}
+.result[data-kind="err"]{border-color:var(--danger);background:var(--danger-soft)}
+.result .verb{font-family:var(--display);font-size:3rem;font-weight:700;letter-spacing:.04em;line-height:1}
+.result[data-kind="in"] .verb{color:var(--safe)}
+.result[data-kind="out"] .verb{color:var(--action)}
+.result[data-kind="err"] .verb{color:var(--danger);font-size:2rem}
+.result .name{font-size:1.4rem;font-weight:600;overflow-wrap:anywhere}
+.alert{padding:8px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-weight:600}
+
+/* Personal */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);cursor:pointer;text-align:left;width:100%}
+.card b{display:block;font-size:1.05rem;overflow-wrap:anywhere}
+.card small{display:block;color:var(--muted);overflow-wrap:anywhere}
+.tag{font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
+
+/* Bitácora */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right}
+
+/* Diálogos */
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(10,16,22,.6)}
+.dlg{display:flex;flex-direction:column;gap:14px;padding:20px}
+.dlg .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.photo-pick{display:flex;align-items:center;gap:14px}
+.profile{display:flex;gap:16px;align-items:center}
+.profile>div{min-width:0}
+.dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0;overflow-wrap:anywhere}
+.qrbox{display:flex;flex-direction:column;align-items:center;gap:8px}
+.qrbox img{width:min(260px,100%);border-radius:8px;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:12px 18px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100vw - 32px);box-shadow:var(--shadow)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.cam{position:relative;border-radius:12px;overflow:hidden;background:var(--hazard-dark);aspect-ratio:4/3;max-width:100%}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+.cam .reticle{position:absolute;inset:18% 24%;border:4px solid var(--hazard);border-radius:14px;pointer-events:none}
+.net{color:var(--warn);font-weight:600}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="stripe"></div>
+  <div class="top-in">
+    <div class="brand">
+      <h1>Espacios Confinados</h1>
+      <div class="clock num" id="clock"></div>
+      <div class="net" id="net" hidden>Sin conexión. Los registros se guardan en esta tablet.</div>
+    </div>
+    <div class="count" id="count" data-st="zero"><b class="num" id="countN">0</b><span id="countT">personas adentro</span></div>
+    <button type="button" class="btn small" data-act="install" id="installBtn" hidden>Instalar app</button>
+    <nav aria-label="Secciones">
+      <button type="button" data-view="mapa" aria-current="true">Mapa</button>
+      <button type="button" data-view="escanear">Escanear</button>
+      <button type="button" data-view="personal">Personal</button>
+      <button type="button" data-view="bitacora">Bitácora</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="banner" id="bLocal" hidden>Este navegador no permite guardar datos (¿ventana privada?). Lo que registres se pierde al cerrar la app.</div>
+  <div class="banner" id="bEx" hidden><span>Estás viendo datos de ejemplo para que pruebes la app.</span><button type="button" class="btn small" data-act="clearEx" data-confirm>Borrar ejemplos</button></div>
+
+  <section class="view" id="v-mapa">
+    <div class="split">
+      <div class="panel">
+        <div class="head">
+          <h2>Mapa de la zona</h2>
+          <div class="tools" id="mapTools"></div>
+        </div>
+        <div class="map" id="map" style="margin-top:12px"></div>
+        <input type="file" accept="image/*" id="bgFile" class="sr" tabindex="-1">
+      </div>
+      <div class="panel">
+        <h2>Adentro ahora</h2>
+        <div class="inside" id="inside"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-escanear" hidden>
+    <div class="scan">
+      <div class="panel stack">
+        <h2>Registrar entrada o salida</h2>
+        <div class="field">
+          <label class="label" for="checkpoint">Punto de control (espacio donde está esta tablet)</label>
+          <select id="checkpoint"></select>
+        </div>
+        <div class="cam" id="camBox" hidden><video id="video" playsinline muted></video><div class="reticle"></div></div>
+        <button type="button" class="btn primary big" data-act="camToggle" id="camBtn">Encender cámara</button>
+        <label class="btn small" for="cam" tabindex="0">La cámara no abre: tomar foto del código</label>
+        <input type="file" accept="image/*" capture="environment" id="cam" class="sr" tabindex="-1">
+        <form class="field" id="codeForm">
+          <label class="label" for="code">Lector de códigos o clave escrita</label>
+          <div class="inline">
+            <input id="code" autocomplete="off" autocapitalize="characters" placeholder="Ej. K7M2QX">
+            <button class="btn" type="submit">Registrar</button>
+          </div>
+        </form>
+        <p class="muted">Apunta la cámara al código del casco. El primer escaneo de una persona marca su entrada y el siguiente su salida; para volver a leer el mismo casco, retíralo de la cámara un momento. Un lector Bluetooth o USB escribe la clave en el cuadro de arriba y la registra solo.</p>
+      </div>
+      <div class="panel result" id="result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-personal" hidden>
+    <div class="head">
+      <h2>Personal autorizado</h2>
+      <button type="button" class="btn primary" data-act="newWorker">Nueva persona</button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="view" id="v-bitacora" hidden>
+    <div class="head">
+      <h2>Bitácora de entradas y salidas</h2>
+      <div class="tools">
+        <div class="field"><label class="sr" for="logDate">Filtrar por día</label><input type="date" id="logDate"></div>
+        <button type="button" class="btn" data-act="allDays">Todos los días</button>
+        <button type="button" class="btn" data-act="csv" id="csvBtn">Guardar CSV</button>
+        <button type="button" class="btn" data-act="backup">Respaldar datos</button>
+        <label class="btn" for="restoreFile" tabindex="0">Restaurar respaldo</label>
+        <input type="file" accept="application/json,.json" id="restoreFile" class="sr" tabindex="-1">
+      </div>
+    </div>
+    <div class="panel tablewrap" id="log"></div>
+  </section>
+</main>
+
+<dialog id="dlgForm">
+  <form class="dlg" id="wForm">
+    <h2 id="wFormTitle">Nueva persona</h2>
+    <div class="photo-pick">
+      <span id="wPhotoPrev"></span>
+      <div class="stack" style="gap:6px">
+        <label class="btn small" for="wPhoto" tabindex="0">Tomar o elegir foto</label>
+        <input type="file" accept="image/*" id="wPhoto" class="sr" tabindex="-1">
+        <span class="muted" style="font-size:.85rem">Se guarda recortada y en tamaño pequeño.</span>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="label" for="wName">Nombre completo</label><input id="wName" required maxlength="80"></div>
+      <div class="field"><label class="label" for="wCo">Empresa o contratista</label><input id="wCo" maxlength="80"></div>
+      <div class="field"><label class="label" for="wRole">Puesto</label><input id="wRole" maxlength="60"></div>
+      <div class="field"><label class="label" for="wBlood">Tipo de sangre</label>
+        <select id="wBlood"><option value="">Sin dato</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
+      <div class="field"><label class="label" for="wTel">Contacto de emergencia</label><input id="wTel" maxlength="80" placeholder="Nombre y teléfono"></div>
+      <div class="field"><label class="label" for="wCert">Capacitación vigente hasta</label><input type="date" id="wCert"></div>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgWorker"><div class="dlg" id="wDetail"></div></dialog>
+
+<dialog id="dlgZone">
+  <form class="dlg" id="zForm">
+    <h2 id="zFormTitle">Nuevo espacio</h2>
+    <div class="grid2">
+      <div class="field"><label class="label" for="zName">Nombre del espacio</label><input id="zName" required maxlength="40" placeholder="Ej. Tanque T-101"></div>
+      <div class="field"><label class="label" for="zLimit">Tiempo máximo adentro (min)</label><input id="zLimit" type="number" min="1" max="720" value="30" required></div>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn danger" data-act="delZone" data-confirm id="zDel" hidden>Eliminar espacio</button>
+      <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" crossorigin="anonymous"></script>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
+const L={workers:new Map(),zones:new Map(),visits:new Map(),visitsOpen:new Map(),config:new Map()};
+let idb=null,deferredInstall=null,stream=null,camSeen={code:"",last:0},ready=false,edit=false,drag=null,view='mapa',pendingPhoto=null,editingW=null,editingZ=null,lastScan={code:'',t:0};
+
+/* ---------- datos ---------- */
+const workers=()=>[...L.workers.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'));
+const zones=()=>[...L.zones.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es'));
+const visits=()=>[...new Map([...L.visits,...L.visitsOpen]).values()].sort((a,b)=>b.in-a.in);
+const openVisits=()=>visits().filter(v=>v.open).sort((a,b)=>a.in-b.in);
+const cfg=()=>L.config.get('map')||{};
+const mapOf=col=>L[col];
+
+const COLS=['workers','zones','visits','config'];
+function fail(e){toast(e&&e.name==='QuotaExceededError'?'La tablet se quedó sin espacio. Respalda y borra registros antiguos.':'No se pudo guardar. Intenta de nuevo.')}
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',1);
+  r.onupgradeneeded=()=>COLS.forEach(c=>{if(!r.result.objectStoreNames.contains(c))r.result.createObjectStore(c,{keyPath:'id'})});
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})}
+function tx(cols,mode,fn){return new Promise((res,rej)=>{const t=idb.transaction(cols,mode);let out;try{out=fn(t)}catch(e){rej(e);return}
+  t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>rej(t.error||new Error('tx'))})}
+async function put(col,id,data){const row={...data,id};
+  try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).put(row))}catch(e){fail(e);throw e}
+  L[col].set(id,row);renderAll()}
+async function patch(col,id,data){return put(col,id,{...L[col].get(id),...data})}
+async function del(col,id){
+  try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).delete(id))}catch(e){fail(e);throw e}
+  L[col].delete(id);renderAll()}
+async function loadAll(){for(const c of COLS){const rows=await new Promise((res,rej)=>{const r=idb.transaction(c).objectStore(c).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+  L[c].clear();rows.forEach(r=>L[c].set(r.id,r))}}
+const downloads={async save({filename,data}){const blob=data instanceof Blob?data:new Blob([data]);const u=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}};
+
+/* ---------- utilidades ---------- */
+const ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function newId(n=6){let s;do{s=Array.from({length:n},()=>ABC[Math.floor(Math.random()*ABC.length)]).join('')}while(L.workers.has(s));return s}
+const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
+const okImg=s=>typeof s==='string'&&s.startsWith('data:image/');
+function avatar(w,cls=''){return `<span class="av ${cls}">${w&&okImg(w.photo)?`<img src="${esc(w.photo)}" alt="">`:`<span>${esc(initials(w&&w.name))}</span>`}</span>`}
+const fmtT=ms=>new Date(ms).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const fmtD=ms=>new Date(ms).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+const dayKey=ms=>{const d=new Date(ms);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function dur(ms){const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')}
+function status(since,limMin){if(!limMin)return 'ok';const f=(Date.now()-since)/(limMin*60000);return f>=1?'over':f>=.8?'warn':'ok'}
+const ST={ok:'Dentro del tiempo',warn:'Cerca del límite',over:'Tiempo excedido'};
+const worst=a=>a.includes('over')?'over':a.includes('warn')?'warn':'ok';
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3800)}
+let ac;function beep(up){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;o.connect(g);g.connect(ac.destination);o.frequency.setValueAtTime(up?660:520,t);o.frequency.setValueAtTime(up?880:390,t+.12);g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start(t);o.stop(t+.3)}catch(e){}}
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function loadImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);res(i)};i.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};i.src=u})}
+function draw(img,max,square){
+  const c=document.createElement('canvas'),x=c.getContext('2d',{willReadFrequently:true});
+  if(square){const s=Math.min(img.width,img.height);c.width=c.height=max;x.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,max,max)}
+  else{const k=Math.min(1,max/Math.max(img.width,img.height));c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);x.drawImage(img,0,0,c.width,c.height)}
+  return c}
+
+/* ---------- registro de entrada / salida ---------- */
+function findWorker(code){const id=String(code).trim().toUpperCase().replace(/^EC1:/,'');return L.workers.get(id)}
+async function toggle(w,via){
+  const open=openVisits().find(v=>v.w===w.id),now=Date.now();
+  if(open){
+    await patch('visits',open.id,{out:now,open:false,viaOut:via});
+    beep(false);
+    return {kind:'out',w,zName:open.zName,t:now,d:now-open.in};
+  }
+  const z=L.zones.get($('#checkpoint').value);
+  if(!z)return {kind:'err',msg:'Elige un punto de control. Si no hay espacios, agrégalos en el Mapa.'};
+  const id='v'+now.toString(36)+Math.floor(Math.random()*1296).toString(36);
+  await put('visits',id,{w:w.id,wName:w.name,wCo:w.company||'',z:z.id,zName:z.name,in:now,out:0,open:true,via,...(w.example?{example:true}:{})});
+  beep(true);
+  const expired=w.cert&&w.cert<dayKey(now);
+  return {kind:'in',w,zName:z.name,t:now,warn:expired?'Capacitación vencida desde '+w.cert+'. Verifica antes de permitir el ingreso.':''};
+}
+async function handleCode(code,via){
+  code=String(code).trim();if(!code)return;
+  const now=Date.now();
+  if(code===lastScan.code&&now-lastScan.t<4000)return;
+  lastScan={code,t:now};
+  const w=findWorker(code);
+  if(!w){showResult({kind:'err',msg:'Esta clave no está registrada: '+code.slice(0,40)});return}
+  try{showResult(await toggle(w,via))}catch(e){showResult({kind:'err',msg:'No se pudo guardar el registro.'})}
+}
+function showResult(r){
+  const el=$('#result');el.dataset.kind=r?r.kind:'';
+  if(!r){el.innerHTML='<p class="label">Esperando escaneo</p><p class="muted">Aquí aparece quién entró o salió y a qué hora.</p>';return}
+  if(r.kind==='err'){el.innerHTML=`<div class="verb">No registrado</div><p>${esc(r.msg)}</p>`;return}
+  el.innerHTML=`${avatar(r.w,'xl')}<div class="verb">${r.kind==='in'?'ENTRADA':'SALIDA'}</div>
+    <div class="name">${esc(r.w.name)}</div>
+    <div><b>${esc(r.zName)}</b> · <span class="num">${fmtT(r.t)}</span></div>
+    ${r.kind==='out'?`<div class="muted">Tiempo adentro: <b class="num">${dur(r.d)}</b></div>`:''}
+    ${r.warn?`<div class="alert">${esc(r.warn)}</div>`:''}`;
+}
+async function decode(file){
+  const img=await loadImg(file);
+  for(const max of [1500,1000,600]){const c=draw(img,max),d=c.getContext('2d').getImageData(0,0,c.width,c.height),r=window.jsQR&&jsQR(d.data,c.width,c.height);if(r&&r.data)return r.data}
+  return null}
+
+/* ---------- render ---------- */
+function renderAll(){renderHeader();renderMap();renderInside();renderCheckpoint();renderCards();renderLog();
+  const ex=[...L.workers.values(),...L.zones.values(),...L.visits.values(),...L.visitsOpen.values()].some(d=>d.example);
+  $('#bEx').hidden=!ex}
+function zoneLimit(v){const z=L.zones.get(v.z);return z?+z.limitMin||0:0}
+function renderHeader(){
+  const ov=openVisits(),over=ov.filter(v=>status(v.in,zoneLimit(v))==='over').length,c=$('#count');
+  $('#countN').textContent=ov.length;
+  c.dataset.st=over?'over':ov.length?'in':'zero';
+  $('#countT').textContent=over?`adentro · ${over} con tiempo excedido`:ov.length===1?'persona adentro':'personas adentro';
+}
+function renderMap(){
+  if(drag)return;
+  const el=$('#map'),zs=zones(),ov=openVisits(),c=cfg(),bg=okImg(c.bg);
+  el.classList.toggle('has-bg',bg);el.classList.toggle('editing',edit);
+  el.style.backgroundImage=bg?`url("${c.bg}")`:'';
+  el.style.aspectRatio=bg&&c.w&&c.h?`${c.w} / ${c.h}`:'';
+  $('#mapTools').innerHTML=edit
+    ?`<button type="button" class="btn small" data-act="newZone">Agregar espacio</button>
+      <button type="button" class="btn small" data-act="pickBg">${bg?'Cambiar plano':'Subir plano'}</button>
+      ${bg?'<button type="button" class="btn small" data-act="rmBg">Quitar plano</button>':''}
+      <button type="button" class="btn small primary" data-act="editOff">Listo</button>`
+    :'<button type="button" class="btn small" data-act="editOn">Editar mapa</button>';
+  if(!zs.length){el.innerHTML=`<div class="map-empty"><h3>${ready?'Aún no hay espacios en el mapa':'Cargando mapa…'}</h3>${ready?'<p>Toca <b>Editar mapa</b> y luego <b>Agregar espacio</b> para colocar tu primer tanque, cisterna o registro.</p>':''}</div>`;return}
+  el.innerHTML=zs.map(z=>{
+    const occ=ov.filter(v=>v.z===z.id),st=occ.length?worst(occ.map(v=>status(v.in,+z.limitMin))):'';
+    return `<div class="zone ${occ.length?'occ':''}" data-id="${esc(z.id)}" data-st="${st}" data-zone style="left:${clamp(+z.x||50,4,96)}%;top:${clamp(+z.y||50,10,88)}%">
+      <div class="ring num">${occ.length}</div><div class="zname">${esc(z.name)}</div>
+      <div class="people">${occ.map(v=>`<span data-since="${v.in}" data-limit="${+z.limitMin||0}" data-st="${status(v.in,+z.limitMin)}" title="${esc(v.wName)}">${avatar(L.workers.get(v.w)||{name:v.wName},'s')}</span>`).join('')}</div>
+    </div>`}).join('')+(edit?'<div class="map-note">Arrastra cada espacio a su lugar. Tócalo para cambiar nombre o tiempo máximo.</div>':bg?'':'<div class="map-note">Plano esquemático. Sube el plano de tu planta en Editar mapa.</div>');
+}
+function renderInside(){
+  const ov=openVisits(),el=$('#inside');
+  if(!ov.length){el.innerHTML=`<div class="empty">${ready?'Nadie adentro. Los espacios están libres.':'Cargando…'}</div>`;return}
+  el.innerHTML=ov.map(v=>{const lim=zoneLimit(v),st=status(v.in,lim);
+    return `<div class="row" data-since="${v.in}" data-limit="${lim}" data-st="${st}">
+      ${avatar(L.workers.get(v.w)||{name:v.wName})}
+      <div class="who"><b>${esc(v.wName)}</b><span class="muted">${esc(v.zName)} · entró <span class="num">${fmtT(v.in)}</span></span></div>
+      <div class="timer num">${dur(Date.now()-v.in)}</div>
+      <div class="foot"><span class="pill"><span class="stlabel">${ST[st]}</span>${lim?` · máx. ${lim} min`:''}</span>
+      <button type="button" class="btn small" data-act="exit" data-id="${esc(v.id)}">Marcar salida</button></div>
+    </div>`}).join('');
+}
+function renderCheckpoint(){
+  const s=$('#checkpoint'),cur=s.value||ls('ec.cp')||'',zs=zones();
+  s.innerHTML=zs.length?zs.map(z=>`<option value="${esc(z.id)}">${esc(z.name)}</option>`).join(''):'<option value="">Sin espacios registrados</option>';
+  if(zs.some(z=>z.id===cur))s.value=cur;
+}
+function renderCards(){
+  const ws=workers(),ov=openVisits(),el=$('#cards');
+  if(!ws.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'Todavía no hay personas registradas. Toca <b>Nueva persona</b> para agregar la primera y generar su código QR.':'Cargando…'}</div>`;return}
+  el.innerHTML=ws.map(w=>{const v=ov.find(o=>o.w===w.id);
+    return `<button type="button" class="card" data-act="openWorker" data-id="${esc(w.id)}">${avatar(w)}
+      <span><b>${esc(w.name)}</b><small>${esc([w.role,w.company].filter(Boolean).join(' · ')||'Sin datos de puesto')}</small>
+      <span class="pill ${v?'in':''}">${v?'Adentro · '+esc(v.zName):'Afuera'}</span>${w.example?' <span class="tag">Ejemplo</span>':''}</span></button>`}).join('');
+}
+function logRows(){const d=$('#logDate').value;return visits().filter(v=>!d||dayKey(v.in)===d)}
+function renderLog(){
+  const rows=logRows(),el=$('#log');
+  if(!rows.length){el.innerHTML=`<div class="empty">${ready?'No hay registros'+($('#logDate').value?' en ese día.':' todavía. Aparecen aquí al escanear el primer casco.'):'Cargando…'}</div>`;return}
+  el.innerHTML=`<table><thead><tr><th>Persona</th><th>Empresa</th><th>Espacio</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Registro</th></tr></thead><tbody>${rows.map(v=>
+    `<tr><td>${esc(v.wName)}</td><td>${esc(v.wCo||'')}</td><td>${esc(v.zName)}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
+     <td class="num">${v.open?'<span class="pill in">Adentro</span>':fmtT(v.out)}</td><td class="num">${v.open?'':dur(v.out-v.in)}</td>
+     <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td></tr>`).join('')}</tbody></table>`;
+}
+function tick(){
+  $('#clock').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'})+' · '+fmtT(Date.now());
+  document.querySelectorAll('[data-since]').forEach(el=>{const s=+el.dataset.since,st=status(s,+el.dataset.limit);
+    if(el.dataset.st!==st){el.dataset.st=st;const l=el.querySelector('.stlabel');if(l)l.textContent=ST[st]}
+    const t=el.querySelector('.timer');if(t)t.textContent=dur(Date.now()-s)});
+  document.querySelectorAll('[data-zone].occ').forEach(z=>{z.dataset.st=worst([...z.querySelectorAll('[data-since]')].map(e=>e.dataset.st))});
+  renderHeader();
+}
+
+/* ---------- etiqueta QR ---------- */
+function qrCanvas(text,size){
+  const q=qrcode(0,'H');q.addData(text);q.make();
+  const n=q.getModuleCount(),cell=Math.max(1,Math.floor(size/(n+8))),c=document.createElement('canvas'),x=c.getContext('2d');
+  c.width=c.height=cell*(n+8);x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+4)*cell,(r+4)*cell,cell,cell);
+  return c}
+function labelCanvas(w){
+  const W=640,H=820,c=document.createElement('canvas'),x=c.getContext('2d');c.width=W;c.height=H;
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  x.save();x.beginPath();x.rect(0,0,W,48);x.clip();x.fillStyle='#F2C200';x.fillRect(0,0,W,48);x.fillStyle='#16202B';
+  for(let i=-60;i<W+60;i+=56){x.beginPath();x.moveTo(i,48);x.lineTo(i+28,48);x.lineTo(i+76,0);x.lineTo(i+48,0);x.fill()}x.restore();
+  x.fillStyle='#16202B';x.textAlign='center';
+  x.font='700 34px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('ESPACIO CONFINADO · PERSONAL AUTORIZADO',W/2,96,W-40);
+  const q=qrCanvas('EC1:'+w.id,500);x.imageSmoothingEnabled=false;x.drawImage(q,70,116,500,500);
+  x.font='700 52px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText(String(w.name).toUpperCase(),W/2,676,W-40);
+  x.font='500 28px "Barlow",Arial,sans-serif';x.fillText([w.role,w.company].filter(Boolean).join(' · '),W/2,720,W-40);
+  x.font='700 40px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('CLAVE '+w.id+(w.blood?'   ·   SANGRE '+w.blood:''),W/2,780,W-40);
+  return c}
+
+/* ---------- personal ---------- */
+function openForm(w){
+  editingW=w||null;pendingPhoto=w?w.photo||null:null;
+  $('#wFormTitle').textContent=w?'Editar datos':'Nueva persona';
+  $('#wName').value=w?w.name:'';$('#wCo').value=w?w.company||'':'';$('#wRole').value=w?w.role||'':'';
+  $('#wBlood').value=w?w.blood||'':'';$('#wTel').value=w?w.tel||'':'';$('#wCert').value=w?w.cert||'':'';
+  $('#wPhoto').value='';$('#wPhotoPrev').innerHTML=avatar({name:w?w.name:'+',photo:pendingPhoto},'xl');
+  $('#dlgWorker').close();$('#dlgForm').showModal();
+}
+function openWorker(id){
+  const w=L.workers.get(id);if(!w)return;
+  const v=openVisits().find(o=>o.w===id),n=visits().filter(x=>x.w===id&&!x.open).length;
+  let label='';try{label=labelCanvas(w).toDataURL('image/png')}catch(e){}
+  $('#wDetail').innerHTML=`<div class="profile">${avatar(w,'xl')}<div><h2>${esc(w.name)}</h2>
+      <p class="muted">${esc([w.role,w.company].filter(Boolean).join(' · '))}</p>
+      <span class="pill ${v?'in':''}">${v?'Adentro · '+esc(v.zName)+' desde '+fmtT(v.in):'Afuera'}</span></div></div>
+    <dl class="dl"><dt>Clave</dt><dd class="num"><b>${esc(w.id)}</b></dd>
+      <dt>Tipo de sangre</dt><dd>${esc(w.blood||'Sin dato')}</dd>
+      <dt>Emergencia</dt><dd>${esc(w.tel||'Sin dato')}</dd>
+      <dt>Capacitación</dt><dd>${w.cert?'Vigente hasta '+esc(w.cert)+(w.cert<dayKey(Date.now())?' (vencida)':''):'Sin dato'}</dd>
+      <dt>Ingresos previos</dt><dd class="num">${n}</dd></dl>
+    <div class="qrbox">${label?`<img src="${label}" alt="Etiqueta con código QR de ${esc(w.name)}">`:'<p class="muted">No se pudo generar el código QR.</p>'}
+      <p class="muted" style="font-size:.85rem;text-align:center">Imprime esta etiqueta en vinil adhesivo de 5 × 6.5 cm o más y pégala en el casco.</p></div>
+    <div class="acts">
+      <button type="button" class="btn danger small" data-act="delWorker" data-id="${esc(w.id)}" data-confirm>Eliminar</button>
+      <button type="button" class="btn small" data-act="editWorker" data-id="${esc(w.id)}">Editar</button>
+      ${downloads&&label?`<button type="button" class="btn small" data-act="saveLabel" data-id="${esc(w.id)}">Guardar etiqueta</button>`:''}
+      <button type="button" class="btn small" data-act="manual" data-id="${esc(w.id)}">${v?'Marcar salida':'Marcar entrada'}</button>
+      <button type="button" class="btn small primary" data-act="closeDlg">Cerrar</button>
+    </div>`;
+  $('#dlgWorker').showModal();
+}
+$('#wPhoto').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;
+  try{pendingPhoto=draw(await loadImg(f),220,true).toDataURL('image/jpeg',.72);$('#wPhotoPrev').innerHTML=avatar({name:'',photo:pendingPhoto},'xl')}catch(x){toast('No se pudo leer la foto.')}});
+$('#wForm').addEventListener('submit',async e=>{e.preventDefault();
+  const name=$('#wName').value.trim();if(!name)return;
+  const id=editingW?editingW.id:newId();
+  const data={name,company:$('#wCo').value.trim(),role:$('#wRole').value.trim(),blood:$('#wBlood').value,tel:$('#wTel').value.trim(),cert:$('#wCert').value,photo:pendingPhoto||'',createdAt:editingW?editingW.createdAt||Date.now():Date.now()};
+  try{await put('workers',id,data);$('#dlgForm').close();toast(editingW?'Datos actualizados':'Persona registrada. Ya tiene su código QR.');if(!editingW){L.workers.has(id)||L.workers.set(id,{...data,id});openWorker(id)}}catch(x){}});
+
+/* ---------- espacios ---------- */
+function openZone(z){editingZ=z||null;$('#zFormTitle').textContent=z?'Editar espacio':'Nuevo espacio';$('#zName').value=z?z.name:'';$('#zLimit').value=z?z.limitMin||30:30;$('#zDel').hidden=!z;$('#dlgZone').showModal()}
+$('#zForm').addEventListener('submit',async e=>{e.preventDefault();
+  const name=$('#zName').value.trim(),limitMin=clamp(parseInt($('#zLimit').value,10)||30,1,720);if(!name)return;
+  try{if(editingZ)await patch('zones',editingZ.id,{name,limitMin});
+      else await put('zones','z'+Date.now().toString(36),{name,limitMin,x:50,y:50});
+      $('#dlgZone').close();if(!editingZ)toast('Espacio agregado. Arrástralo a su lugar en el mapa.')}catch(x){}});
+const mapEl=$('#map');
+mapEl.addEventListener('pointerdown',e=>{if(!edit)return;const z=e.target.closest('.zone');if(!z)return;e.preventDefault();
+  drag={el:z,id:z.dataset.id,moved:false,sx:e.clientX,sy:e.clientY};try{z.setPointerCapture(e.pointerId)}catch(x){}});
+mapEl.addEventListener('pointermove',e=>{if(!drag)return;if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>6)drag.moved=true;if(!drag.moved)return;
+  const r=mapEl.getBoundingClientRect();drag.x=clamp((e.clientX-r.left)/r.width*100,4,96);drag.y=clamp((e.clientY-r.top)/r.height*100,10,88);
+  drag.el.style.left=drag.x+'%';drag.el.style.top=drag.y+'%'});
+async function endDrag(){if(!drag)return;const d=drag;drag=null;
+  if(d.moved){try{await patch('zones',d.id,{x:Math.round(d.x*10)/10,y:Math.round(d.y*10)/10})}catch(x){}renderMap()}else openZone(L.zones.get(d.id))}
+mapEl.addEventListener('pointerup',endDrag);mapEl.addEventListener('pointercancel',endDrag);
+$('#bgFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const img=await loadImg(f);let out=null,c;
+    for(const [max,q] of [[1600,.8],[1400,.7],[1200,.6],[1000,.5],[800,.45]]){c=draw(img,max);const u=c.toDataURL('image/jpeg',q);if(u.length<230000){out=u;break}}
+    if(!out){toast('El plano es demasiado detallado. Prueba con una imagen más sencilla.');return}
+    await put('config','map',{bg:out,w:c.width,h:c.height});toast('Plano cargado. Acomoda los espacios sobre él.')}catch(x){toast('No se pudo leer la imagen.')}});
+
+/* ---------- cámara en vivo ---------- */
+const scanCv=document.createElement('canvas');let lastTry=0;
+async function camStart(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Este navegador no permite cámara en vivo. Usa la opción de tomar foto.');return}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false})}
+  catch(e){stream=null;toast(e&&e.name==='NotAllowedError'?'Permiso de cámara denegado. Actívalo en los ajustes del navegador.':'No se pudo abrir la cámara.');return}
+  const v=$('#video');v.srcObject=stream;$('#camBox').hidden=false;$('#camBtn').textContent='Apagar cámara';
+  try{await v.play()}catch(e){}
+  try{if(navigator.wakeLock)await navigator.wakeLock.request('screen')}catch(e){}
+  requestAnimationFrame(camLoop)}
+function camStop(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('#video').srcObject=null;$('#camBox').hidden=true;$('#camBtn').textContent='Encender cámara'}
+function camLoop(t){
+  if(!stream)return;requestAnimationFrame(camLoop);
+  if(t-lastTry<150)return;lastTry=t;
+  const v=$('#video');if(v.readyState<2||!v.videoWidth||!window.jsQR)return;
+  const k=Math.min(1,800/Math.max(v.videoWidth,v.videoHeight));scanCv.width=Math.round(v.videoWidth*k);scanCv.height=Math.round(v.videoHeight*k);
+  const x=scanCv.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0,scanCv.width,scanCv.height);
+  const r=jsQR(x.getImageData(0,0,scanCv.width,scanCv.height).data,scanCv.width,scanCv.height,{inversionAttempts:'dontInvert'});
+  if(!r||!r.data)return;
+  const now=Date.now(),same=r.data===camSeen.code&&now-camSeen.last<3000;
+  camSeen={code:r.data,last:now};
+  if(!same){lastScan={code:'',t:0};handleCode(r.data,'qr')}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)camStop()});
+$('#restoreFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!d||d.app!=='espacios-confinados')throw new Error('fmt');
+    let n=0;for(const c of COLS)for(const r of (Array.isArray(d[c])?d[c]:[]))if(r&&typeof r.id==='string'){await put(c,r.id,r);n++}
+    toast('Respaldo restaurado: '+n+' registros.')}catch(x){toast('Ese archivo no es un respaldo válido de esta app.')}});
+
+/* ---------- acciones ---------- */
+function setView(v){if(v!=='escanear'&&stream)camStop();view=v;document.querySelectorAll('.view').forEach(s=>s.hidden=s.id!=='v-'+v);
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v));ls('ec.view',v);
+  if(v==='escanear')setTimeout(()=>{try{$('#code').focus({preventScroll:true})}catch(e){}},50)}
+function armed(b){if(!b.hasAttribute('data-confirm')||b.dataset.armed)return true;
+  b.dataset.armed='1';b.dataset.txt=b.textContent;b.textContent='Toca otra vez para confirmar';
+  setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.txt}},4000);return false}
+const ACT={
+  editOn(){edit=true;renderMap()},editOff(){edit=false;renderMap()},
+  newZone(){openZone(null)},pickBg(){$('#bgFile').click()},
+  async rmBg(){try{await del('config','map')}catch(e){}},
+  async delZone(){const z=editingZ;if(!z)return;if(openVisits().some(v=>v.z===z.id)){toast('Hay personas adentro. Registra su salida primero.');return}
+    try{await del('zones',z.id);$('#dlgZone').close()}catch(e){}},
+  async exit(b){const v=visits().find(x=>x.id===b.dataset.id),w=v&&(L.workers.get(v.w)||{id:v.w,name:v.wName});if(!v)return;
+    try{const now=Date.now();await patch('visits',v.id,{out:now,open:false,viaOut:'manual'});beep(false);toast('Salida de '+v.wName+' a las '+fmtT(now))}catch(e){}},
+  newWorker(){openForm(null)},openWorker(b){openWorker(b.dataset.id)},editWorker(b){openForm(L.workers.get(b.dataset.id))},
+  async delWorker(b){const id=b.dataset.id;if(openVisits().some(v=>v.w===id)){toast('Está adentro. Registra su salida antes de eliminar.');return}
+    try{await del('workers',id);$('#dlgWorker').close();toast('Persona eliminada. Su historial queda en la bitácora.')}catch(e){}},
+  async manual(b){const w=L.workers.get(b.dataset.id);if(!w)return;
+    try{const r=await toggle(w,'manual');if(r.kind==='err'){toast(r.msg);return}$('#dlgWorker').close();toast((r.kind==='in'?'Entrada':'Salida')+' de '+w.name+' · '+r.zName+' · '+fmtT(r.t));showResult(r)}catch(e){}},
+  async saveLabel(b){const w=L.workers.get(b.dataset.id);if(!w||!downloads)return;
+    labelCanvas(w).toBlob(async blob=>{try{await downloads.save({filename:'etiqueta-'+w.id+'.png',data:blob});toast('Etiqueta guardada')}catch(e){if(e&&e.code!=='declined')toast('No se pudo guardar. Mantén presionada la imagen para guardarla.')}},'image/png')},
+  camToggle(){stream?camStop():camStart()},
+  async install(){if(!deferredInstall)return;deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;$('#installBtn').hidden=true},
+  async backup(){const d={app:'espacios-confinados',v:1,exportedAt:new Date().toISOString()};COLS.forEach(c=>d[c]=[...L[c].values()]);
+    await downloads.save({filename:'respaldo-espacios-confinados-'+dayKey(Date.now())+'.json',data:JSON.stringify(d)});toast('Respaldo generado. Guárdalo fuera de la tablet.')},
+  closeDlg(b){b.closest('dialog').close()},
+  allDays(){$('#logDate').value='';renderLog()},
+  async csv(){if(!downloads)return;const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+    const rows=[['Persona','Empresa','Clave','Espacio','Fecha','Entrada','Salida','Minutos adentro','Registro']].concat(logRows().map(v=>[v.wName,v.wCo||'',v.w,v.zName,dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),v.via==='qr'?'QR':'Manual']));
+    try{await downloads.save({filename:'bitacora-espacios-confinados-'+dayKey(Date.now())+'.csv',data:'﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n')});toast('Bitácora guardada')}catch(e){if(e&&e.code!=='declined')toast('No se pudo guardar el archivo.')}},
+  async clearEx(){try{
+      for(const [id,v] of new Map([...L.visits,...L.visitsOpen]))if(v.example)await del('visits',id);
+      for(const [id,w] of [...L.workers])if(w.example)await del('workers',id);
+      for(const [id,z] of [...L.zones])if(z.example)await del('zones',id);
+      toast('Ejemplos borrados. La app queda lista para tus datos.')}catch(e){}}
+};
+document.addEventListener('click',e=>{
+  const n=e.target.closest('nav button');if(n){setView(n.dataset.view);return}
+  const b=e.target.closest('[data-act]');if(!b||!ACT[b.dataset.act])return;
+  if(!armed(b))return;ACT[b.dataset.act](b)});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('label[tabindex]')){e.preventDefault();e.target.click()}});
+$('#checkpoint').addEventListener('change',e=>ls('ec.cp',e.target.value));
+$('#codeForm').addEventListener('submit',e=>{e.preventDefault();const i=$('#code'),v=i.value;i.value='';handleCode(v,'qr');i.focus()});
+$('#cam').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  $('#result').dataset.kind='';$('#result').innerHTML='<p class="label">Leyendo código…</p>';
+  try{const code=await decode(f);if(code){lastScan={code:'',t:0};await handleCode(code,'qr')}
+      else showResult({kind:'err',msg:'No se encontró un código QR en la foto. Acércate al casco, evita reflejos y vuelve a intentar.'})}
+  catch(x){showResult({kind:'err',msg:'No se pudo leer la foto.'})}});
+$('#logDate').addEventListener('change',renderLog);
+
+/* ---------- arranque ---------- */
+function netState(){$('#net').hidden=navigator.onLine!==false}
+addEventListener('online',netState);addEventListener('offline',netState);
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#installBtn').hidden=false});
+addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
+(async function init(){
+  const v=ls('ec.view');if(['mapa','escanear','personal','bitacora'].includes(v))setView(v);
+  showResult(null);renderAll();tick();setInterval(tick,1000);netState();
+  try{idb=await openDB();await loadAll()}catch(e){idb=null;$('#bLocal').hidden=false}
+  ready=true;renderAll();
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>

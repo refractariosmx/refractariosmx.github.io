@@ -1,0 +1,38 @@
+CONTROL DE ESPACIOS CONFINADOS - app web instalable
+====================================================
+
+Esta carpeta es la app completa. Funciona sin internet una vez instalada
+y guarda todos los registros en la tablet.
+
+1) PUBLICARLA (una sola vez)
+   La carpeta debe estar en un sitio con direccion https://, porque los
+   navegadores solo permiten instalar apps y usar la camara en sitios seguros.
+   Sirve cualquier hosting de paginas estaticas (por ejemplo Netlify,
+   GitHub Pages o Cloudflare Pages, que tienen plan gratuito) o el servidor
+   web de tu empresa. Sube TODOS los archivos de la carpeta, sin cambiarles
+   el nombre:
+      index.html  sw.js  manifest.webmanifest
+      icon-192.png  icon-512.png  icon-maskable-512.png
+
+2) INSTALARLA EN LA TABLET (con internet, una sola vez)
+   - Android (Chrome): abre la direccion, toca "Instalar app" en la barra
+     superior de la app, o el menu de Chrome > "Instalar app" /
+     "Agregar a pantalla principal".
+   - iPad (Safari): abre la direccion, toca Compartir > "Agregar a inicio".
+   - Abre la app desde su icono, entra a Escanear, toca "Encender camara"
+     y acepta el permiso.
+   - Antes de ir a campo: pon la tablet en modo avion y abre la app para
+     confirmar que carga y que genera el codigo QR de una persona.
+
+3) DATOS Y RESPALDOS
+   - Los registros viven solo en esa tablet. No se comparten con otras
+     tablets ni se suben a ningun servidor.
+   - Si borras los datos del navegador o desinstalas la app, se pierden.
+   - En Bitacora usa "Respaldar datos" con frecuencia y guarda el archivo
+     fuera de la tablet. "Restaurar respaldo" lo vuelve a cargar, tambien
+     en otra tablet.
+
+4) ACTUALIZAR LA APP
+   Sube los archivos nuevos y cambia el numero de version en sw.js
+   (la linea CACHE = 'espacios-confinados-v1'). La tablet toma la version
+   nueva la siguiente vez que abra la app con internet.

@@ -197,6 +197,9 @@ dialog::backdrop{background:rgba(10,16,22,.6)}
 .cam video{width:100%;height:100%;object-fit:cover;display:block}
 .cam .reticle{position:absolute;inset:18% 24%;border:4px solid var(--hazard);border-radius:14px;pointer-events:none}
 .net{color:var(--warn);font-weight:600}
+#syncBtn[data-st="ok"]{color:var(--safe);border-color:var(--safe)}
+#syncBtn[data-st="warn"]{color:var(--warn);border-color:var(--warn)}
+#syncBtn[data-st="over"]{color:var(--danger);border-color:var(--danger)}
 </style>
 </head>
 <body>
@@ -209,6 +212,7 @@ dialog::backdrop{background:rgba(10,16,22,.6)}
       <div class="net" id="net" hidden>Sin conexión. Los registros se guardan en esta tablet.</div>
     </div>
     <div class="count" id="count" data-st="zero"><b class="num" id="countN">0</b><span id="countT">personas adentro</span></div>
+    <button type="button" class="btn small" data-act="syncOpen" id="syncBtn" hidden>Sincronización</button>
     <button type="button" class="btn small" data-act="install" id="installBtn" hidden>Instalar app</button>
     <nav aria-label="Secciones">
       <button type="button" data-view="mapa" aria-current="true">Mapa</button>
@@ -334,8 +338,11 @@ dialog::backdrop{background:rgba(10,16,22,.6)}
   </form>
 </dialog>
 
+<dialog id="dlgSync"><div class="dlg" id="syncBody"></div></dialog>
+
 <div class="toast" id="toast" role="status" hidden></div>
 
+<script src="config-sync.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" crossorigin="anonymous"></script>
 <script>
@@ -362,11 +369,11 @@ function tx(cols,mode,fn){return new Promise((res,rej)=>{const t=idb.transaction
   t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>rej(t.error||new Error('tx'))})}
 async function put(col,id,data){const row={...data,id};
   try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).put(row))}catch(e){fail(e);throw e}
-  L[col].set(id,row);renderAll()}
+  L[col].set(id,row);renderAll();fsPush(col,id)}
 async function patch(col,id,data){return put(col,id,{...L[col].get(id),...data})}
 async function del(col,id){
   try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).delete(id))}catch(e){fail(e);throw e}
-  L[col].delete(id);renderAll()}
+  L[col].delete(id);renderAll();fsPush(col,id)}
 async function loadAll(){for(const c of COLS){const rows=await new Promise((res,rej)=>{const r=idb.transaction(c).objectStore(c).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
   L[c].clear();rows.forEach(r=>L[c].set(r.id,r))}}
 const downloads={async save({filename,data}){const blob=data instanceof Blob?data:new Blob([data]);const u=URL.createObjectURL(blob),a=document.createElement('a');
@@ -658,6 +665,8 @@ const ACT={
     try{const r=await toggle(w,'manual');if(r.kind==='err'){toast(r.msg);return}$('#dlgWorker').close();toast((r.kind==='in'?'Entrada':'Salida')+' de '+w.name+' · '+r.zName+' · '+fmtT(r.t));showResult(r)}catch(e){}},
   async saveLabel(b){const w=L.workers.get(b.dataset.id);if(!w||!downloads)return;
     labelCanvas(w).toBlob(async blob=>{try{await downloads.save({filename:'etiqueta-'+w.id+'.png',data:blob});toast('Etiqueta guardada')}catch(e){if(e&&e.code!=='declined')toast('No se pudo guardar. Mantén presionada la imagen para guardarla.')}},'image/png')},
+  syncOpen(){renderSyncDlg();$('#dlgSync').showModal()},
+  async syncOut(){try{await SYNC.auth.signOut();toast('Sesión cerrada. Esta tablet deja de sincronizar.')}catch(e){}},
   camToggle(){stream?camStop():camStart()},
   async install(){if(!deferredInstall)return;deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;$('#installBtn').hidden=true},
   async backup(){const d={app:'espacios-confinados',v:1,exportedAt:new Date().toISOString()};COLS.forEach(c=>d[c]=[...L[c].values()]);
@@ -687,6 +696,91 @@ $('#cam').addEventListener('change',async e=>{const f=e.target.files[0];e.target
   catch(x){showResult({kind:'err',msg:'No se pudo leer la foto.'})}});
 $('#logDate').addEventListener('change',renderLog);
 
+/* ---------- sincronización entre tablets (Firebase) ---------- */
+const SYNC={cfg:(window.EC_FIREBASE&&window.EC_FIREBASE.apiKey&&window.EC_FIREBASE.projectId)?window.EC_FIREBASE:null,fs:null,auth:null,user:null,pending:0,started:false,err:'',last:0};
+const SITE='sitios/principal',FB='https://www.gstatic.com/firebasejs/10.12.2/';
+let unsubs=[];
+function loadScript(u){return new Promise((res,rej)=>{const e=document.createElement('script');e.src=u;e.onload=res;e.onerror=()=>rej(new Error('script'));document.head.appendChild(e)})}
+function outbox(){try{const o=JSON.parse(ls('ec.outbox')||'[]');return Array.isArray(o)?o:[]}catch(e){return []}}
+function outboxAdd(col,id){const o=outbox().filter(x=>!(x[0]===col&&x[1]===id));o.push([col,id]);ls('ec.outbox',JSON.stringify(o))}
+// Sube el estado actual de un registro: si existe en la tablet lo guarda en la nube, si no, lo borra.
+function fsPush(col,id){
+  if(!SYNC.cfg)return;
+  if(!SYNC.started){outboxAdd(col,id);syncUI();return}
+  const ref=SYNC.fs.collection(SITE+'/'+col).doc(id),row=L[col].get(id);
+  SYNC.pending++;syncUI();
+  (row?ref.set(JSON.parse(JSON.stringify(row))):ref.delete()).then(
+    ()=>{SYNC.pending--;SYNC.err='';SYNC.last=Date.now();syncUI()},
+    e=>{SYNC.pending--;SYNC.err=(e&&e.code)||'error';outboxAdd(col,id);syncUI()});
+}
+async function onRemote(col,snap){
+  let changed=false;
+  for(const ch of snap.docChanges()){
+    if(ch.doc.metadata.hasPendingWrites)continue;
+    const id=ch.doc.id;
+    try{
+      if(ch.type==='removed'){if(L[col].has(id)){if(idb)await tx(col,'readwrite',t=>t.objectStore(col).delete(id));L[col].delete(id);changed=true}}
+      else{const row={...ch.doc.data(),id};if(idb)await tx(col,'readwrite',t=>t.objectStore(col).put(row));L[col].set(id,row);changed=true}
+    }catch(e){}
+  }
+  if(!snap.metadata.fromCache){
+    SYNC.err='';SYNC.last=Date.now();
+    const k='ec.seed.'+SYNC.cfg.projectId+'.'+col;
+    if(!ls(k)){ls(k,'1');const ids=new Set(snap.docs.map(d=>d.id));for(const id of [...L[col].keys()])if(!ids.has(id))fsPush(col,id)}
+  }
+  if(changed&&!drag)renderAll();
+  syncUI();
+}
+function syncStart(){
+  if(SYNC.started)return;SYNC.started=true;
+  const cutoff=Date.now()-45*864e5;
+  COLS.forEach(col=>{let q=SYNC.fs.collection(SITE+'/'+col);if(col==='visits')q=q.where('in','>=',cutoff);
+    unsubs.push(q.onSnapshot({includeMetadataChanges:true},snap=>onRemote(col,snap),e=>{SYNC.err=(e&&e.code)||'error';syncUI()}))});
+  const o=outbox();ls('ec.outbox','[]');o.forEach(x=>fsPush(x[0],x[1]));
+}
+function syncStop(){unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];SYNC.started=false}
+function syncState(){
+  if(SYNC.err==='sdk')return ['warn','Sincronización no disponible'];
+  if(!SYNC.auth)return ['','Sincronización: cargando'];
+  if(!SYNC.user)return ['warn','Inicia sesión para sincronizar'];
+  if(SYNC.err==='permission-denied')return ['over','Sincronización sin permiso'];
+  if(navigator.onLine===false)return ['warn','Sin conexión: se sincroniza al volver'];
+  if(SYNC.pending>0||outbox().length)return ['warn','Subiendo cambios…'];
+  return ['ok','Sincronizado'];
+}
+function syncUI(){if(!SYNC.cfg)return;const b=$('#syncBtn'),[st,t]=syncState();b.hidden=false;b.textContent=t;b.dataset.st=st;if($('#dlgSync').open&&!$('#syncForm'))renderSyncDlg()}
+function renderSyncDlg(){
+  const el=$('#syncBody'),[st,t]=syncState();
+  if(SYNC.err==='sdk'||!SYNC.auth){el.innerHTML=`<h2>Sincronización</h2><p>${SYNC.err==='sdk'?'No se pudo cargar el servicio de sincronización. Abre la app una vez con internet y vuelve a intentar.':'Cargando…'}</p><div class="acts"><button type="button" class="btn primary" data-act="closeDlg">Cerrar</button></div>`;return}
+  if(!SYNC.user){el.innerHTML=`<form class="stack" id="syncForm"><h2>Sincronizar esta tablet</h2>
+    <p class="muted">Entra con la cuenta que creaste en Firebase. Solo se hace una vez por tablet.</p>
+    <div class="field"><label class="label" for="syncEmail">Correo</label><input id="syncEmail" type="email" autocomplete="username" required></div>
+    <div class="field"><label class="label" for="syncPass">Contraseña</label><input id="syncPass" type="password" autocomplete="current-password" required></div>
+    <p class="alert" id="syncMsg" hidden></p>
+    <div class="acts"><button type="button" class="btn" data-act="closeDlg">Cancelar</button><button type="submit" class="btn primary">Entrar</button></div></form>`;return}
+  el.innerHTML=`<h2>Sincronización</h2>
+    <dl class="dl"><dt>Estado</dt><dd><b>${esc(t)}</b></dd>
+    <dt>Cuenta</dt><dd>${esc(SYNC.user.email||'')}</dd>
+    <dt>UID</dt><dd class="num">${esc(SYNC.user.uid)}</dd>
+    <dt>Última sincronización</dt><dd class="num">${SYNC.last?fmtD(SYNC.last)+' '+fmtT(SYNC.last):'Aún no'}</dd>
+    <dt>Cambios por subir</dt><dd class="num">${SYNC.pending+outbox().length}</dd></dl>
+    ${SYNC.err==='permission-denied'?'<p class="alert">Firebase rechazó el acceso. Revisa que las reglas de Firestore tengan el UID de arriba.</p>':''}
+    <div class="acts"><button type="button" class="btn danger small" data-act="syncOut" data-confirm>Cerrar sesión</button><button type="button" class="btn primary" data-act="closeDlg">Cerrar</button></div>`;
+}
+document.addEventListener('submit',async e=>{if(e.target.id!=='syncForm')return;e.preventDefault();
+  const m=$('#syncMsg');m.hidden=true;
+  try{await SYNC.auth.signInWithEmailAndPassword($('#syncEmail').value.trim(),$('#syncPass').value);toast('Tablet conectada. Sincronizando…')}
+  catch(x){const c=(x&&x.code)||'';m.textContent=c==='auth/network-request-failed'?'Sin conexión. Necesitas internet para entrar la primera vez.':c==='auth/too-many-requests'?'Demasiados intentos. Espera unos minutos.':'Correo o contraseña incorrectos.';m.hidden=false}});
+async function syncInit(){
+  if(!SYNC.cfg)return;syncUI();
+  try{await loadScript(FB+'firebase-app-compat.js');await loadScript(FB+'firebase-auth-compat.js');await loadScript(FB+'firebase-firestore-compat.js');
+    firebase.initializeApp(SYNC.cfg);SYNC.auth=firebase.auth();SYNC.fs=firebase.firestore();
+    try{await SYNC.fs.enablePersistence({synchronizeTabs:true})}catch(e){}
+  }catch(e){SYNC.err='sdk';SYNC.auth=null;syncUI();return}
+  SYNC.auth.onAuthStateChanged(u=>{SYNC.user=u||null;if(u)syncStart();else syncStop();syncUI();if($('#dlgSync').open)renderSyncDlg()});
+}
+addEventListener('online',syncUI);addEventListener('offline',syncUI);
+
 /* ---------- arranque ---------- */
 function netState(){$('#net').hidden=navigator.onLine!==false}
 addEventListener('online',netState);addEventListener('offline',netState);
@@ -697,6 +791,7 @@ addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
   showResult(null);renderAll();tick();setInterval(tick,1000);netState();
   try{idb=await openDB();await loadAll()}catch(e){idb=null;$('#bLocal').hidden=false}
   ready=true;renderAll();
+  syncInit();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

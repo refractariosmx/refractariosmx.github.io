@@ -256,6 +256,10 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 .swatches{display:flex;flex-wrap:wrap;gap:8px}
 .swatch{width:46px;height:46px;border-radius:10px;border:3px solid transparent;background:var(--zc);cursor:pointer}
 .swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--yellow)}
+.swatch{position:relative}
+.swatch.used::after{content:"";position:absolute;right:4px;top:4px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 2px rgba(0,0,0,.35)}
+.swatch.custom{display:grid;place-items:center;border:2px dashed var(--muted);color:var(--ink);font-size:1.6rem;font-weight:700}
+.swatch.custom[aria-pressed="true"]{border-style:solid}
 .photo-pick{display:flex;align-items:center;gap:14px}
 .profile{display:flex;gap:16px;align-items:center}
 .profile>div{min-width:0}
@@ -432,7 +436,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <div class="field"><label class="label" for="pCode">Clave corta</label><input id="pCode" required maxlength="4" autocapitalize="characters" placeholder="Ej. PRA"></div>
     </div>
     <div class="field"><label class="label" for="pLoc">Ubicación (opcional)</label><input id="pLoc" maxlength="80" placeholder="Ej. Zona norte, junto a subestación 2"></div>
-    <div class="field"><span class="label">Color</span><div class="swatches" id="pColors"></div></div>
+    <div class="field"><span class="label">Color</span><div class="swatches" id="pColors"></div><span class="muted" style="font-size:.85rem" id="pColorNote"></span></div>
     <div class="acts">
       <button type="button" class="btn danger" data-act="delPlant" data-confirm id="pDel" hidden>Eliminar planta</button>
       <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
@@ -483,7 +487,9 @@ const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
 const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min']];
 const RESTS=[[0,'Sin descanso'],[10,'10 min'],[15,'15 min'],[20,'20 min'],[30,'30 min']];
-const ZCOLORS=['#2563EB','#7C3AED','#0D9488','#DB2777','#9A3412','#475569','#15803D','#B45309'];
+const ZCOLORS=['#2563EB','#7C3AED','#0D9488','#DB2777','#9A3412','#475569','#15803D','#B45309','#0369A1','#BE123C','#4D7C0F','#A21CAF','#1E3A8A','#065F46','#7F1D1D','#92400E'];
+// Texto blanco o negro según qué tan claro sea el color de la planta
+function inkFor(hex){const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return '#FFFFFF';const n=parseInt(m[1],16),c=[n>>16,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]>.36?'#1E2023':'#FFFFFF'}
 const REST_KEEP=3*3600e3; // un descanso terminado se deja de mostrar 3 h después
 let idb=null,deferredInstall=null,stream=null,camSeen={code:'',last:0},ready=false,view='adentro',pendingPhoto=null,editingW=null,editingZ=null,editingP=null,pColor=ZCOLORS[0],lastScan={code:'',t:0};
 const LOGO=new Image();LOGO.src='logo.png';
@@ -508,7 +514,7 @@ const crewOf=jid=>[...L.crew.values()].filter(c=>c.job===jid).sort((a,b)=>a.at-b
 const visitLimit=v=>v.lim!=null?+v.lim||0:(+((L.workers.get(v.w)||{}).limitMin)||+((L.zones.get(v.z)||{}).limitMin)||0);
 const visitPlant=v=>v.p||plantOfZone(v.z);
 const pColorOf=p=>p&&p.color||'#475569';
-const pTag=(p,s)=>`<span class="tag ${s?'s':''}" style="--zc:${pColorOf(p)}">${esc(p?p.code:'?')}</span>`;
+const pTag=(p,s)=>`<span class="tag ${s?'s':''}" style="--zc:${pColorOf(p)};color:${inkFor(pColorOf(p))}">${esc(p?p.code:'?')}</span>`;
 function zLabel(zid,zName,pid,pName){const z=L.zones.get(zid),p=L.plants.get(pid||(z&&z.plant));
   return `<span class="zline">${p?pTag(p,1):''}${esc(p?p.name:pName||'')}${(p||pName)?' · ':''}${esc(z?z.name:zName||'Espacio eliminado')}</span>`}
 const placeText=v=>{const p=L.plants.get(visitPlant(v));return (p?p.code+' · ':v.pName?v.pName+' · ':'')+v.zName};
@@ -873,10 +879,17 @@ $('#wForm').addEventListener('submit',async e=>{e.preventDefault();
   try{await put('workers',id,data);$('#dlgForm').close();toast(editingW?'Datos actualizados':'Persona registrada. Ya tiene su código QR.');if(!editingW)openWorker(id)}catch(x){}});
 
 /* ---------- plantas y espacios ---------- */
-function renderSwatches(){$('#pColors').innerHTML=ZCOLORS.map(c=>`<button type="button" class="swatch" style="--zc:${c}" data-act="pickColor" data-c="${c}" aria-pressed="${c===pColor}" aria-label="Color ${c}"></button>`).join('')}
+function renderSwatches(){
+  const used=new Set(plants().filter(p=>!editingP||p.id!==editingP.id).map(pColorOf).map(c=>c.toUpperCase())),custom=!ZCOLORS.includes(pColor);
+  $('#pColors').innerHTML=ZCOLORS.map(c=>`<button type="button" class="swatch ${used.has(c.toUpperCase())?'used':''}" style="--zc:${c}" data-act="pickColor" data-c="${c}" aria-pressed="${c===pColor}" aria-label="Color ${c}${used.has(c.toUpperCase())?', ya lo usa otra planta':''}" title="${used.has(c.toUpperCase())?'Ya lo usa otra planta':''}"></button>`).join('')
+   +`<label class="swatch custom" style="--zc:${custom?pColor:'transparent'}" aria-pressed="${custom}" title="Elegir otro color">${custom?'':'+'}<input type="color" id="pCustom" class="sr" value="${custom?pColor:'#FF6600'}"></label>`;
+  $('#pColorNote').textContent=(used.has(String(pColor).toUpperCase())?'Ese color ya lo usa otra planta; se distinguirán por su clave. ':'')+'Los colores con punto ya están en uso. Con + eliges cualquier otro tono.';
+}
+document.addEventListener('input',e=>{if(e.target.id==='pCustom'){pColor=e.target.value.toUpperCase();const l=e.target.closest('.swatch');l.style.setProperty('--zc',pColor);l.setAttribute('aria-pressed','true');l.firstChild.nodeType===3&&(l.firstChild.textContent='');document.querySelectorAll('#pColors button.swatch').forEach(b=>b.setAttribute('aria-pressed','false'))}});
+document.addEventListener('change',e=>{if(e.target.id==='pCustom')renderSwatches()});
 function openPlant(p){editingP=p||null;$('#pFormTitle').textContent=p?'Editar planta':'Nueva planta';
   $('#pName').value=p?p.name:'';$('#pCode').value=p?p.code:'';$('#pLoc').value=p?p.loc||'':'';
-  const used=new Set(plants().map(pColorOf));pColor=p?pColorOf(p):(ZCOLORS.find(c=>!used.has(c))||ZCOLORS[0]);renderSwatches();
+  const used=new Set(plants().map(pColorOf));pColor=p?pColorOf(p):(ZCOLORS.find(c=>!used.has(c))||ZCOLORS[plants().length%ZCOLORS.length]);renderSwatches();
   $('#pDel').hidden=!p;$('#dlgPlant').showModal()}
 $('#pName').addEventListener('input',()=>{if(!editingP&&!$('#pCode').dataset.touched)$('#pCode').value=codeFrom($('#pName').value)});
 $('#pCode').addEventListener('input',e=>{e.target.dataset.touched='1'});

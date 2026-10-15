@@ -486,7 +486,7 @@ const COLS=['workers','zones','visits','config','jobs','crew','plants'];
 const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
 const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min']];
-const RESTS=[[0,'Sin descanso'],[10,'10 min'],[15,'15 min'],[20,'20 min'],[30,'30 min']];
+const RESTS=[[0,'Sin descanso'],[15,'15 min'],[30,'30 min'],[45,'45 min']];
 const ZCOLORS=['#2563EB','#7C3AED','#0D9488','#DB2777','#9A3412','#475569','#15803D','#B45309','#0369A1','#BE123C','#4D7C0F','#A21CAF','#1E3A8A','#065F46','#7F1D1D','#92400E'];
 // Texto blanco o negro según qué tan claro sea el color de la planta
 function inkFor(hex){const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return '#FFFFFF';const n=parseInt(m[1],16),c=[n>>16,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]>.36?'#1E2023':'#FFFFFF'}
@@ -498,6 +498,7 @@ const LOGO=new Image();LOGO.src='logo.png';
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 const cfgNum=(k,d)=>{const v=ls(k);return v===null||v===''||isNaN(+v)?d:+v};
 let selPlant=ls('ec.plant')||'',selZone=ls('ec.cp')||'',selReg=cfgNum('ec.reg',30),selRest=cfgNum('ec.rest',15);
+if(!RESTS.some(r=>r[0]===selRest))selRest=15;
 
 /* ---------- datos ---------- */
 const byName=(a,b)=>String(a.name).localeCompare(String(b.name),'es',{numeric:true});

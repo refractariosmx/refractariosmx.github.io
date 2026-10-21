@@ -235,6 +235,20 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 
 /* Tarjetas */
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.companies{display:flex;flex-direction:column;gap:18px}
+.coblock{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line)}
+.coblock>header{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.coblock>header .coname{flex:1 1 170px;min-width:0;font-family:var(--display);font-size:1.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1.05;overflow-wrap:break-word}
+.coblock>header .coname small{display:block;font-family:var(--body);font-size:.85rem;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin-top:4px}
+.colo{flex:none;display:inline-grid;place-items:center;width:44px;height:44px;border-radius:9px;overflow:hidden;background:#FFFFFF;border:1px solid var(--line);color:#26282C;font-family:var(--display);font-weight:700;font-size:1rem;letter-spacing:.02em}
+.colo img{width:100%;height:100%;object-fit:contain;padding:3px;display:block}
+.colo.l{width:84px;height:64px;font-size:1.4rem;border-radius:12px}
+.colo.s{width:26px;height:26px;font-size:.6rem;border-radius:6px;vertical-align:middle}
+.colo.s img{padding:1px}
+.colo.empty{background:var(--surface);color:var(--muted);border-style:dashed}
+.prow .who .cow{display:block}
+.prow .who .cow .colo{margin-right:6px}
+.card.wk{grid-template-columns:auto minmax(0,1fr) auto}
 .card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--yellow);cursor:pointer;text-align:left;width:100%}
 .card b{display:block;font-size:1.05rem;overflow-wrap:anywhere}
 .card small{display:block;color:var(--muted);overflow-wrap:anywhere}
@@ -382,7 +396,9 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <h2>Personal autorizado</h2>
       <button type="button" class="btn primary" data-act="newWorker">Nueva persona</button>
     </div>
-    <div class="cards" id="cards"></div>
+    <p class="muted">El personal se agrupa por empresa. Toca <b>Cambiar logo</b> para ponerle a cada empresa su logotipo; aparecerá en las tarjetas, en el tablero de Adentro y en la ficha de cada persona.</p>
+    <div class="companies" id="cards"></div>
+    <input type="file" accept="image/*" id="coFile" class="sr" tabindex="-1">
   </section>
 
   <section class="view" id="v-plantas" hidden>
@@ -425,7 +441,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
     </div>
     <div class="grid2">
       <div class="field"><label class="label" for="wName">Nombre completo</label><input id="wName" required maxlength="80"></div>
-      <div class="field"><label class="label" for="wCo">Empresa o contratista</label><input id="wCo" maxlength="80"></div>
+      <div class="field"><label class="label" for="wCo">Empresa o contratista</label><input id="wCo" maxlength="80" list="coList" placeholder="Ej. ASEIN"><datalist id="coList"></datalist></div>
       <div class="field"><label class="label" for="wRole">Puesto</label><input id="wRole" maxlength="60"></div>
       <div class="field"><label class="label" for="wBlood">Tipo de sangre</label>
         <select id="wBlood"><option value="">Sin dato</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
@@ -508,7 +524,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
-const COLS=['workers','zones','visits','config','jobs','crew','plants','sites'];
+const COLS=['workers','zones','visits','config','jobs','crew','plants','sites','companies'];
 const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
 const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min']];
@@ -543,6 +559,11 @@ const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid):nul
 const crewOf=jid=>[...L.crew.values()].filter(c=>c.job===jid).sort((a,b)=>a.at-b.at);
 const visitLimit=v=>v.lim!=null?+v.lim||0:(+((L.workers.get(v.w)||{}).limitMin)||+((L.zones.get(v.z)||{}).limitMin)||0);
 const visitPlant=v=>v.p||plantOfZone(v.z);
+const coId=name=>'c-'+slug(String(name||'').trim()||'sin-empresa');
+const coOf=name=>L.companies.get(coId(name));
+function coLogo(name,cls=''){const c=coOf(name),n=String(name||'').trim();
+  if(c&&okImg(c.logo))return `<span class="colo ${cls}" title="${esc(n)}"><img src="${esc(c.logo)}" alt="${esc(n)}"></span>`;
+  return `<span class="colo empty ${cls}" title="${esc(n||'Sin empresa')}">${esc(n?initials(n):'—')}</span>`}
 const visitSite=v=>v.s||siteOfPlant(visitPlant(v));
 const siteName=v=>{const x=L.sites.get(visitSite(v));return x?x.name:v.sName||''};
 const pColorOf=p=>p&&p.color||'#475569';
@@ -552,7 +573,7 @@ function zLabel(zid,zName,pid,pName){const z=L.zones.get(zid),p=L.plants.get(pid
 const placeText=v=>{const p=L.plants.get(visitPlant(v));return (p?p.code+' · ':v.pName?v.pName+' · ':'')+v.zName};
 
 function fail(e){toast(e&&e.name==='QuotaExceededError'?'La tablet se quedó sin espacio. Respalda y borra registros antiguos.':'No se pudo guardar. Intenta de nuevo.')}
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',4);
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',5);
   r.onupgradeneeded=()=>COLS.forEach(c=>{if(!r.result.objectStoreNames.contains(c))r.result.createObjectStore(c,{keyPath:'id'})});
   r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})}
 function tx(cols,mode,fn){return new Promise((res,rej)=>{const t=idb.transaction(cols,mode);let out;try{out=fn(t)}catch(e){rej(e);return}
@@ -726,7 +747,7 @@ function personRow(v){
   const lim=visitLimit(v),st=status(v.in,lim),w=L.workers.get(v.w)||{name:v.wName};
   return `<div class="prow" data-since="${v.in}" data-limit="${lim}" data-st="${st}">
     ${avatar(w)}
-    <div class="who"><b>${esc(v.wName)}</b><span>${esc(v.wCo?v.wCo+' · ':'')}entró <span class="num">${fmtHM(v.in)}</span></span></div>
+    <div class="who"><b>${esc(v.wName)}</b><span class="cow">${v.wCo?coLogo(v.wCo,'s'):''}${esc(v.wCo?v.wCo+' · ':'')}entró <span class="num">${fmtHM(v.in)}</span></span></div>
     <div class="timer num">${dur(Date.now()-v.in)}</div>
     ${lim?`<div class="bar"><i style="width:${pct(v.in,lim).toFixed(1)}%"></i></div>`:''}
     <div class="foot"><span class="pill"><span class="stlabel">${lim?ST[st]:'Sin límite'}</span></span>${regSelect(v)}
@@ -806,11 +827,19 @@ function renderJobs(){
 }
 function renderCards(){
   const ws=workers(),ov=openVisits(),el=$('#cards');
-  if(!ws.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'Todavía no hay personas registradas. Toca <b>Nueva persona</b> para agregar la primera y generar su código QR.':'Cargando…'}</div>`;return}
-  el.innerHTML=ws.map(w=>{const v=ov.find(o=>o.w===w.id),r=!v&&activeRestOf(w.id);
-    return `<button type="button" class="card" data-act="openWorker" data-id="${esc(w.id)}">${avatar(w)}
-      <span><b>${esc(w.name)}</b><small>${esc([w.role,w.company].filter(Boolean).join(' · ')||'Sin datos de puesto')}</small>
-      <span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span></span></button>`}).join('');
+  $('#coList').innerHTML=[...new Set(ws.map(w=>String(w.company||'').trim()).filter(Boolean))].sort().map(n=>`<option value="${esc(n)}"></option>`).join('');
+  if(!ws.length){el.innerHTML=`<div class="empty panel">${ready?'Todavía no hay personas registradas. Toca <b>Nueva persona</b> para agregar la primera y generar su código QR.':'Cargando…'}</div>`;return}
+  const groups=new Map();
+  for(const w of ws){const n=String(w.company||'').trim(),k=n.toLowerCase();if(!groups.has(k))groups.set(k,{name:n,ws:[]});groups.get(k).ws.push(w)}
+  const order=[...groups.values()].sort((a,b)=>(a.name?0:1)-(b.name?0:1)||a.name.localeCompare(b.name,'es'));
+  el.innerHTML=order.map(g=>{const inside=g.ws.filter(w=>ov.some(o=>o.w===w.id)).length,c=coOf(g.name);
+    return `<section class="coblock"><header>${coLogo(g.name,'l')}
+      <div class="coname">${esc(g.name||'Sin empresa')}<small>${g.ws.length} ${g.ws.length===1?'persona':'personas'}${inside?' · '+inside+' adentro':''}</small></div>
+      ${g.name?`<button type="button" class="btn small" data-act="coLogo" data-name="${esc(g.name)}">${c&&c.logo?'Cambiar logo':'Agregar logo'}</button>`:''}</header>
+      <div class="cards">${g.ws.map(w=>{const wk=c&&okImg(c.logo);const v=ov.find(o=>o.w===w.id),r=!v&&activeRestOf(w.id);
+        return `<button type="button" class="card wk" data-act="openWorker" data-id="${esc(w.id)}">${avatar(w)}
+        <span><b>${esc(w.name)}</b><small>${esc(w.role||'Sin puesto')}</small>
+        <span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span></span>${c&&okImg(c.logo)?coLogo(g.name):''}</button>`}).join('')}</div></section>`}).join('');
 }
 function areaBox(p,ov){const sp=spacesOf(p.id),n=ov.filter(v=>visitPlant(v)===p.id).length,j=jobForPlant(p.id);
   return `<section class="plant" style="--zc:${pColorOf(p)}">
@@ -894,7 +923,7 @@ function openWorker(id){
   const jobsOf=[...L.crew.values()].filter(c=>c.w===id).map(c=>L.jobs.get(c.job)).filter(Boolean);
   let label='';try{label=labelCanvas(w).toDataURL('image/png')}catch(e){}
   $('#wDetail').innerHTML=`<div class="profile">${avatar(w,'xl')}<div><h2>${esc(w.name)}</h2>
-      <p class="muted">${esc([w.role,w.company].filter(Boolean).join(' · '))}</p>
+      <p class="muted" style="display:flex;align-items:center;gap:8px">${w.company?coLogo(w.company,'s'):''}${esc([w.role,w.company].filter(Boolean).join(' · '))}</p>
       <span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v))+' desde '+fmtT(v.in):r?'En descanso hasta '+fmtHM(r.restEnd):'Afuera'}</span></div></div>
     <dl class="dl"><dt>Clave</dt><dd class="num"><b>${esc(w.id)}</b></dd>
       <dt>Tiempo adentro hoy</dt><dd class="num">${dur(tot)} en ${td.length} ingreso(s)</dd>
@@ -1012,6 +1041,7 @@ function armed(b){if(!b.hasAttribute('data-confirm')||b.dataset.armed)return tru
   setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.txt}},4000);return false}
 const ACT={
   goScan(){setView('escanear')},
+  coLogo(b){coPending=b.dataset.name;$('#coFile').click()},
   pickSite(b){if(selSite!==b.dataset.id){selSite=b.dataset.id;selPlant='';selZone='';ls('ec.site',selSite);ls('ec.plant','');ls('ec.cp','')}renderScanSetup()},
   pickPlant(b){if(selPlant!==b.dataset.id){selPlant=b.dataset.id;selZone='';ls('ec.plant',selPlant);ls('ec.cp','')}renderScanSetup()},
   pickZone(b){selZone=b.dataset.id;ls('ec.cp',selZone);renderScanSetup()},
@@ -1075,6 +1105,11 @@ $('#cam').addEventListener('change',async e=>{const f=e.target.files[0];e.target
       else showResult({kind:'err',title:'No se leyó el código',msg:'No se encontró un código QR en la foto. Acércate al casco, evita reflejos y vuelve a intentar.'})}
   catch(x){showResult({kind:'err',msg:'No se pudo leer la foto.'})}});
 $('#logDate').addEventListener('change',renderLog);
+let coPending='';
+$('#coFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f||!coPending)return;
+  try{const img=await loadImg(f),c=draw(img,240);let url=c.toDataURL('image/png');if(url.length>180000)url=c.toDataURL('image/jpeg',.85);
+    await put('companies',coId(coPending),{name:coPending,logo:url});toast('Logo de '+coPending+' guardado.')}catch(x){toast('No se pudo leer la imagen del logo.')}
+  coPending=''});
 
 /* ---------- sincronización entre tablets (Firebase) ---------- */
 const SYNC={cfg:(window.EC_FIREBASE&&window.EC_FIREBASE.apiKey&&window.EC_FIREBASE.projectId)?window.EC_FIREBASE:null,fs:null,auth:null,user:null,pending:0,started:false,err:'',last:0};

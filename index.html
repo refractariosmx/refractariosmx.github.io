@@ -214,7 +214,16 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 .scanside{display:flex;flex-direction:column;gap:16px;position:sticky;top:180px}
 @media (max-width:820px){.scanside{position:static}}
 
-/* Plantas */
+/* Plantas (sitios) */
+.sites{display:flex;flex-direction:column;gap:18px}
+.site{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line)}
+.site>header{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.sitename{font-family:var(--display);font-size:1.9rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1}
+.sitename small{display:block;font-family:var(--body);font-size:.85rem;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin-top:4px}
+.sitehead{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:1.5rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:4px}
+.sitehead::after{content:"";flex:1;height:3px;background:var(--yellow);border-radius:2px}
+.sitehead:first-child{margin-top:0}
+/* Áreas */
 .plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
 @media (max-width:420px){.plants{grid-template-columns:minmax(0,1fr)}}
 .plant{background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--zc,#475569);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -242,7 +251,7 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 
 /* Bitácora */
 .tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:980px}
+table{border-collapse:collapse;width:100%;min-width:1080px}
 th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 td.num,th.num{text-align:right}
@@ -319,19 +328,23 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <div class="panel stack">
         <div class="step">
           <span class="label"><b>1.</b> Planta</span>
+          <div class="chips" id="siteChips"></div>
+        </div>
+        <div class="step" id="areaStep">
+          <span class="label"><b>2.</b> Área</span>
           <div class="tiles" id="plantTiles"></div>
         </div>
         <div class="step" id="spaceStep">
-          <span class="label"><b>2.</b> Espacio confinado donde entran</span>
+          <span class="label"><b>3.</b> Espacio confinado donde entran</span>
           <div class="chips" id="spaceChips"></div>
           <div class="jobnote" id="jobNote"></div>
         </div>
         <div class="step">
-          <span class="label"><b>3.</b> Régimen de tiempo para las entradas</span>
+          <span class="label"><b>4.</b> Régimen de tiempo para las entradas</span>
           <div class="chips" id="regChips"></div>
         </div>
         <div class="step">
-          <span class="label"><b>4.</b> Descanso al salir</span>
+          <span class="label"><b>5.</b> Descanso al salir</span>
           <div class="chips" id="restChips"></div>
         </div>
       </div>
@@ -360,7 +373,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <h2>Reparaciones activas</h2>
       <button type="button" class="btn primary" data-act="newJob">Nueva reparación</button>
     </div>
-    <p class="muted">Una reparación es de una planta completa: quien escanee su entrada en cualquiera de sus espacios confinados queda activo en ella. Al terminar el trabajo, elimínala.</p>
+    <p class="muted">Una reparación es de un área completa: quien escanee su entrada en cualquiera de sus espacios confinados queda activo en ella. Al terminar el trabajo, elimínala.</p>
     <div class="jobs" id="jobs"></div>
   </section>
 
@@ -374,11 +387,11 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 
   <section class="view" id="v-plantas" hidden>
     <div class="head">
-      <h2>Plantas y espacios confinados</h2>
-      <button type="button" class="btn primary" data-act="newPlant">Nueva planta</button>
+      <h2>Plantas, áreas y espacios</h2>
+      <button type="button" class="btn primary" data-act="newSite">Nueva planta</button>
     </div>
-    <p class="muted">Cada planta tiene su clave y su color, y adentro sus espacios confinados (tanques, ciclones, reactores…). Toca un espacio para editarlo.</p>
-    <div class="plants" id="plants"></div>
+    <p class="muted">Cada <b>planta</b> (ej. GUERRERO) contiene sus <b>áreas</b> (ej. Planta de ácido, Horno túnel) y cada área sus <b>espacios confinados</b> (ej. Reactor, Ciclón). Toca un espacio para editarlo.</p>
+    <div class="sites" id="plants"></div>
   </section>
 
   <section class="view" id="v-bitacora" hidden>
@@ -428,17 +441,30 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 
 <dialog id="dlgWorker"><div class="dlg" id="wDetail"></div></dialog>
 
+<dialog id="dlgSite">
+  <form class="dlg" id="sForm">
+    <h2 id="sFormTitle">Nueva planta</h2>
+    <div class="field"><label class="label" for="sName">Nombre de la planta</label><input id="sName" required maxlength="60" placeholder="Ej. GUERRERO"></div>
+    <div class="acts">
+      <button type="button" class="btn danger" data-act="delSite" data-confirm id="sDel" hidden>Eliminar planta</button>
+      <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlgPlant">
   <form class="dlg" id="pForm">
-    <h2 id="pFormTitle">Nueva planta</h2>
+    <h2 id="pFormTitle">Nueva área</h2>
+    <div class="field"><label class="label" for="pSite">Planta</label><select id="pSite" required></select></div>
     <div class="grid2">
-      <div class="field"><label class="label" for="pName">Nombre de la planta</label><input id="pName" required maxlength="60" placeholder="Ej. Planta regeneradora de ácido"></div>
+      <div class="field"><label class="label" for="pName">Nombre del área</label><input id="pName" required maxlength="60" placeholder="Ej. Planta de ácido"></div>
       <div class="field"><label class="label" for="pCode">Clave corta</label><input id="pCode" required maxlength="4" autocapitalize="characters" placeholder="Ej. PRA"></div>
     </div>
     <div class="field"><label class="label" for="pLoc">Ubicación (opcional)</label><input id="pLoc" maxlength="80" placeholder="Ej. Zona norte, junto a subestación 2"></div>
     <div class="field"><span class="label">Color</span><div class="swatches" id="pColors"></div><span class="muted" style="font-size:.85rem" id="pColorNote"></span></div>
     <div class="acts">
-      <button type="button" class="btn danger" data-act="delPlant" data-confirm id="pDel" hidden>Eliminar planta</button>
+      <button type="button" class="btn danger" data-act="delPlant" data-confirm id="pDel" hidden>Eliminar área</button>
       <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
       <button type="submit" class="btn primary">Guardar</button>
     </div>
@@ -448,7 +474,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 <dialog id="dlgZone">
   <form class="dlg" id="zForm">
     <h2 id="zFormTitle">Nuevo espacio confinado</h2>
-    <div class="field"><label class="label" for="zPlant">Planta</label><select id="zPlant" required></select></div>
+    <div class="field"><label class="label" for="zPlant">Área</label><select id="zPlant" required></select></div>
     <div class="field"><label class="label" for="zName">Nombre del espacio confinado</label><input id="zName" required maxlength="40" placeholder="Ej. Ciclón, Reactor, Tanque 4A"></div>
     <div class="acts">
       <button type="button" class="btn danger" data-act="delZone" data-confirm id="zDel" hidden>Eliminar espacio</button>
@@ -462,8 +488,8 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
   <form class="dlg" id="jForm">
     <h2>Nueva reparación</h2>
     <div class="field"><label class="label" for="jName">Nombre de la reparación</label><input id="jName" required maxlength="80" placeholder="Ej. Cambio de ladrillo refractario"></div>
-    <div class="field"><label class="label" for="jPlant">Planta</label><select id="jPlant" required></select></div>
-    <p class="muted">Quien escanee su entrada en cualquier espacio confinado de esa planta aparecerá como activo en esta reparación.</p>
+    <div class="field"><label class="label" for="jPlant">Área</label><select id="jPlant" required></select></div>
+    <p class="muted">Quien escanee su entrada en cualquier espacio confinado de esa área aparecerá como activo en esta reparación.</p>
     <div class="acts">
       <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
       <button type="submit" class="btn primary">Crear reparación</button>
@@ -482,7 +508,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
-const COLS=['workers','zones','visits','config','jobs','crew','plants'];
+const COLS=['workers','zones','visits','config','jobs','crew','plants','sites'];
 const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
 const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min']];
@@ -497,7 +523,7 @@ const LOGO=new Image();LOGO.src='logo.png';
 /* ---------- ajustes de esta tablet ---------- */
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 const cfgNum=(k,d)=>{const v=ls(k);return v===null||v===''||isNaN(+v)?d:+v};
-let selPlant=ls('ec.plant')||'',selZone=ls('ec.cp')||'',selReg=cfgNum('ec.reg',30),selRest=cfgNum('ec.rest',15);
+let selSite=ls('ec.site')||'',selPlant=ls('ec.plant')||'',selZone=ls('ec.cp')||'',selReg=cfgNum('ec.reg',30),selRest=cfgNum('ec.rest',15);
 if(!RESTS.some(r=>r[0]===selRest))selRest=15;
 
 /* ---------- datos ---------- */
@@ -506,6 +532,9 @@ const workers=()=>[...L.workers.values()].sort(byName);
 const plants=()=>[...L.plants.values()].sort((a,b)=>String(a.code).localeCompare(String(b.code),'es',{numeric:true})||byName(a,b));
 const zones=()=>[...L.zones.values()].sort(byName);
 const spacesOf=pid=>zones().filter(z=>z.plant===pid);
+const sites=()=>[...L.sites.values()].sort(byName);
+const areasOf=sid=>plants().filter(p=>p.site===sid);
+const siteOfPlant=pid=>{const p=L.plants.get(pid);return p?p.site:''};
 const visits=()=>[...L.visits.values()].sort((a,b)=>b.in-a.in);
 const openVisits=()=>visits().filter(v=>v.open).sort((a,b)=>a.in-b.in);
 const jobs=()=>[...L.jobs.values()].sort((a,b)=>b.createdAt-a.createdAt);
@@ -514,6 +543,8 @@ const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid):nul
 const crewOf=jid=>[...L.crew.values()].filter(c=>c.job===jid).sort((a,b)=>a.at-b.at);
 const visitLimit=v=>v.lim!=null?+v.lim||0:(+((L.workers.get(v.w)||{}).limitMin)||+((L.zones.get(v.z)||{}).limitMin)||0);
 const visitPlant=v=>v.p||plantOfZone(v.z);
+const visitSite=v=>v.s||siteOfPlant(visitPlant(v));
+const siteName=v=>{const x=L.sites.get(visitSite(v));return x?x.name:v.sName||''};
 const pColorOf=p=>p&&p.color||'#475569';
 const pTag=(p,s)=>`<span class="tag ${s?'s':''}" style="--zc:${pColorOf(p)};color:${inkFor(pColorOf(p))}">${esc(p?p.code:'?')}</span>`;
 function zLabel(zid,zName,pid,pName){const z=L.zones.get(zid),p=L.plants.get(pid||(z&&z.plant));
@@ -521,7 +552,7 @@ function zLabel(zid,zName,pid,pName){const z=L.zones.get(zid),p=L.plants.get(pid
 const placeText=v=>{const p=L.plants.get(visitPlant(v));return (p?p.code+' · ':v.pName?v.pName+' · ':'')+v.zName};
 
 function fail(e){toast(e&&e.name==='QuotaExceededError'?'La tablet se quedó sin espacio. Respalda y borra registros antiguos.':'No se pudo guardar. Intenta de nuevo.')}
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',3);
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',4);
   r.onupgradeneeded=()=>COLS.forEach(c=>{if(!r.result.objectStoreNames.contains(c))r.result.createObjectStore(c,{keyPath:'id'})});
   r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})}
 function tx(cols,mode,fn){return new Promise((res,rej)=>{const t=idb.transaction(cols,mode);let out;try{out=fn(t)}catch(e){rej(e);return}
@@ -545,14 +576,15 @@ const codeFrom=s=>{const w=String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toU
 let migrating=false;
 async function migrate(){
   if(migrating||!ready)return;
-  const loose=[...L.zones.values()].filter(z=>!z.plant),oldJobs=[...L.jobs.values()].filter(j=>!j.plant&&plantOfZone(j.z));
-  if(!loose.length&&!oldJobs.length)return;
+  const loose=[...L.zones.values()].filter(z=>!z.plant),oldJobs=[...L.jobs.values()].filter(j=>!j.plant&&plantOfZone(j.z)),noSite=()=>[...L.plants.values()].filter(p=>!p.site||!L.sites.has(p.site));
+  if(!loose.length&&!oldJobs.length&&!noSite().length)return;
   migrating=true;
   try{
     for(const z of loose){const name=String(z.loc||'').trim()||'Sin planta asignada',pid='p-'+slug(name);
       if(!L.plants.has(pid)){const used=new Set([...L.plants.values()].map(p=>p.color));const color=z.color&&!used.has(z.color)?z.color:(ZCOLORS.find(c=>!used.has(c))||ZCOLORS[L.plants.size%ZCOLORS.length]);
         await put('plants',pid,{name,code:codeFrom(name),color,loc:''})}
       await patch('zones',z.id,{plant:pid})}
+    const ns=noSite();if(ns.length){const sid='s-principal';if(!L.sites.has(sid))await put('sites',sid,{name:'PLANTA PRINCIPAL'});for(const p of ns)await patch('plants',p.id,{site:sid})}
     for(const j of oldJobs){const p=L.plants.get(plantOfZone(j.z));await patch('jobs',j.id,{plant:plantOfZone(j.z),pName:p?p.name:''})}
   }catch(e){}
   migrating=false;
@@ -607,10 +639,10 @@ async function toggle(w,via){
   const open=openVisits().find(v=>v.w===w.id),now=Date.now();
   if(open){const r=await closeVisit(open,via);return {kind:'out',w,v:open,t:r.t,d:r.t-open.in,lim:visitLimit(open),rest:r.rest,restEnd:r.restEnd}}
   const z=L.zones.get(selZone),p=z&&L.plants.get(z.plant);
-  if(!z||!p)return {kind:'err',title:'Elige el espacio',msg:'La clave de '+w.name+' es correcta. Toca primero la planta y el espacio confinado donde va a entrar (pasos 1 y 2) y vuelve a escanear.'};
+  if(!z||!p)return {kind:'err',title:'Elige el espacio',msg:'La clave de '+w.name+' es correcta. Toca primero la planta, el área y el espacio confinado donde va a entrar (pasos 1, 2 y 3) y vuelve a escanear.'};
   const rest=activeRestOf(w.id);let restWarn='';
   if(rest){if(now<rest.restEnd)restWarn='Entró antes de terminar su descanso: le faltaban '+dur(rest.restEnd-now)+'.';await patch('visits',rest.id,{restDone:true})}
-  const j=jobForPlant(p.id),lim=selReg,v={w:w.id,wName:w.name,wCo:w.company||'',p:p.id,pName:p.name,z:z.id,zName:z.name,in:now,out:0,open:true,via,lim,job:j?j.id:'',jobName:j?j.name:''};
+  const st=L.sites.get(p.site),j=jobForPlant(p.id),lim=selReg,v={w:w.id,wName:w.name,wCo:w.company||'',s:p.site||'',sName:st?st.name:'',p:p.id,pName:p.name,z:z.id,zName:z.name,in:now,out:0,open:true,via,lim,job:j?j.id:'',jobName:j?j.name:''};
   await put('visits',uid('v'),v);
   if(j)await addToJob(j,w);
   beep(true);
@@ -700,23 +732,24 @@ function personRow(v){
     <div class="foot"><span class="pill"><span class="stlabel">${lim?ST[st]:'Sin límite'}</span></span>${regSelect(v)}
       <button type="button" class="btn small" data-act="exit" data-id="${esc(v.id)}" data-confirm>Salida sin escanear</button></div>
   </div>`}
-function renderBoard(){
-  const el=$('#board'),ov=openVisits(),ps=plants();
-  if(!ps.length&&!ov.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'Aún no hay plantas registradas. Entra a <b>Plantas</b>, agrega la primera con sus espacios confinados y registra a tu gente en <b>Personal</b>.':'Cargando…'}</div>`;return}
-  // Solo plantas con gente adentro
-  const groups=new Map();
-  for(const v of ov){const pid=visitPlant(v)||'?';if(!groups.has(pid))groups.set(pid,[]);groups.get(pid).push(v)}
-  if(!groups.size){el.innerHTML=`<div class="idle" style="grid-column:1/-1">Nadie trabajando en espacios confinados en este momento. ${ps.length} ${ps.length===1?'planta registrada':'plantas registradas'}, todas libres.</div>`;return}
-  const idle=ps.filter(p=>!groups.has(p.id)).length;
-  el.innerHTML=[...groups.entries()].map(([pid,vs])=>{const p=L.plants.get(pid),j=jobForPlant(pid);
-    const bySpace=new Map();for(const v of vs){if(!bySpace.has(v.z))bySpace.set(v.z,[]);bySpace.get(v.z).push(v)}
-    const freeSp=p?spacesOf(pid).filter(z=>!bySpace.has(z.id)).map(z=>z.name):[];
-    return `<section class="area occ" style="--zc:${pColorOf(p)}">
-    <header>${p?pTag(p):'<span class="tag">?</span>'}<div><h3>${esc(p?p.name:(vs[0].pName||'Planta eliminada'))}</h3>${p&&p.loc?`<small>${esc(p.loc)}</small>`:''}</div><span class="cnt num">${vs.length}</span></header>
+function areaCard(pid,vs){const p=L.plants.get(pid),j=jobForPlant(pid);
+  const bySpace=new Map();for(const v of vs){if(!bySpace.has(v.z))bySpace.set(v.z,[]);bySpace.get(v.z).push(v)}
+  const freeSp=p?spacesOf(pid).filter(z=>!bySpace.has(z.id)).map(z=>z.name):[];
+  return `<section class="area occ" style="--zc:${pColorOf(p)}">
+    <header>${p?pTag(p):'<span class="tag">?</span>'}<div><h3>${esc(p?p.name:(vs[0].pName||'Área eliminada'))}</h3>${p&&p.loc?`<small>${esc(p.loc)}</small>`:''}</div><span class="cnt num">${vs.length}</span></header>
     ${j?`<div class="jobline">Reparación: <b>${esc(j.name)}</b><span class="muted">${crewOf(j.id).length} activos</span></div>`:''}
     ${[...bySpace.entries()].map(([zid,zv])=>{const z=L.zones.get(zid);return `<div class="space">${esc(z?z.name:zv[0].zName)}<span>${zv.length} adentro</span></div>${zv.map(personRow).join('')}`}).join('')}
-    ${freeSp.length?`<div class="free">Libres: ${esc(freeSp.join(', '))}</div>`:''}</section>`}).join('')
-    +(idle?`<div class="idle" style="grid-column:1/-1">${idle} ${idle===1?'planta más sin actividad':'plantas más sin actividad'}.</div>`:'');
+    ${freeSp.length?`<div class="free">Libres: ${esc(freeSp.join(', '))}</div>`:''}</section>`}
+function renderBoard(){
+  const el=$('#board'),ov=openVisits(),ps=plants();
+  if(!ps.length&&!ov.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'Aún no hay plantas registradas. Entra a <b>Plantas</b>, agrega tu planta con sus áreas y espacios confinados, y registra a tu gente en <b>Personal</b>.':'Cargando…'}</div>`;return}
+  const bySite=new Map();
+  for(const v of ov){const sid=visitSite(v)||'?',pid=visitPlant(v)||'?';if(!bySite.has(sid))bySite.set(sid,new Map());const m=bySite.get(sid);if(!m.has(pid))m.set(pid,[]);m.get(pid).push(v)}
+  if(!bySite.size){el.innerHTML=`<div class="idle" style="grid-column:1/-1">Nadie trabajando en espacios confinados en este momento. Todas las áreas están libres.</div>`;return}
+  const activeAreas=new Set(ov.map(visitPlant)),idle=ps.filter(p=>!activeAreas.has(p.id)).length;
+  el.innerHTML=[...bySite.entries()].map(([sid,areas])=>{const st=L.sites.get(sid),n=[...areas.values()].reduce((a,b)=>a+b.length,0);
+    return `<div class="sitehead">${esc(st?st.name:([...areas.values()][0][0].sName||'Sin planta'))} · ${n} adentro</div>`+[...areas.entries()].map(([pid,vs])=>areaCard(pid,vs)).join('')}).join('')
+    +(idle?`<div class="idle" style="grid-column:1/-1">${idle} ${idle===1?'área más sin actividad':'áreas más sin actividad'}.</div>`:'');
 }
 function renderRests(){
   const rs=restsNow(),el=$('#rests'),now=Date.now();
@@ -730,38 +763,44 @@ function renderRests(){
       <div class="foot"><button type="button" class="btn small" data-act="restEnd" data-id="${esc(v.id)}" data-confirm>Quitar de descanso</button></div></div>`}).join('');
 }
 function renderScanSetup(){
-  const ps=plants(),ov=openVisits();
-  if(!L.plants.has(selPlant)){const z=L.zones.get(selZone);selPlant=z&&z.plant||(ps.length===1?ps[0].id:'')}
+  const ss=sites(),ov=openVisits();
+  if(!L.sites.has(selSite)){const p=L.plants.get(selPlant);selSite=p&&p.site||(ss.length===1?ss[0].id:'')}
+  const ps=areasOf(selSite);
+  if(!ps.some(p=>p.id===selPlant))selPlant=ps.length===1?ps[0].id:'';
   const sp=spacesOf(selPlant);
   if(!sp.some(z=>z.id===selZone))selZone=sp.length===1?sp[0].id:'';
+  $('#siteChips').innerHTML=ss.length?ss.map(x=>{const n=ov.filter(v=>visitSite(v)===x.id).length;
+    return `<button type="button" class="chip" data-act="pickSite" data-id="${esc(x.id)}" aria-pressed="${x.id===selSite}">${esc(x.name)}${n?`<small>${n} adentro</small>`:''}</button>`}).join('')
+    :'<div class="empty">No hay plantas. Agrégalas en la pestaña <b>Plantas</b>.</div>';
+  $('#areaStep').hidden=!selSite;
   $('#plantTiles').innerHTML=ps.length?ps.map(p=>{const n=spacesOf(p.id).length,inside=ov.filter(v=>visitPlant(v)===p.id).length;
     return `<button type="button" class="tile" style="--zc:${pColorOf(p)}" data-act="pickPlant" data-id="${esc(p.id)}" aria-pressed="${p.id===selPlant}">
       ${pTag(p)}<span><b>${esc(p.name)}</b><small>${n} ${n===1?'espacio':'espacios'}${inside?' · '+inside+' adentro':''}</small></span></button>`}).join('')
-    :'<div class="empty">No hay plantas. Agrégalas en la pestaña <b>Plantas</b>.</div>';
+    :'<div class="muted">Esta planta no tiene áreas. Agrégalas en <b>Plantas</b>.</div>';
   $('#spaceStep').hidden=!selPlant;
   $('#spaceChips').innerHTML=sp.length?sp.map(z=>{const n=ov.filter(v=>v.z===z.id).length;
     return `<button type="button" class="chip" data-act="pickZone" data-id="${esc(z.id)}" aria-pressed="${z.id===selZone}">${esc(z.name)}${n?`<small>${n} adentro</small>`:''}</button>`}).join('')
-    :'<div class="muted">Esta planta no tiene espacios confinados. Agrégalos en <b>Plantas</b>.</div>';
+    :'<div class="muted">Esta área no tiene espacios confinados. Agrégalos en <b>Plantas</b>.</div>';
   const p=L.plants.get(selPlant),j=p&&jobForPlant(p.id);
   $('#jobNote').innerHTML=!p?'':j?`Las entradas en <b>${esc(p.name)}</b> se suman a la reparación <b>${esc(j.name)}</b>.`
     :`<b>${esc(p.name)}</b> no tiene reparación activa. <button type="button" class="linkbtn" data-act="newJob">Crear una</button>`;
   $('#regChips').innerHTML=REGS.map(([m,t])=>`<button type="button" class="chip" data-act="pickReg" data-m="${m}" aria-pressed="${selReg===m}">${t}</button>`).join('');
   $('#restChips').innerHTML=RESTS.map(([m,t])=>`<button type="button" class="chip" data-act="pickRest" data-m="${m}" aria-pressed="${selRest===m}">${t}</button>`).join('');
 }
-function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro · '+v.zName]:['in','Adentro en otra planta'];
+function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro · '+v.zName]:['in','Adentro en otra área'];
   return activeRestOf(wid)?['rest','En descanso']:['','Afuera']}
 function renderJobs(){
   const js=jobs(),el=$('#jobs');
-  if(!js.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'No hay reparaciones activas. Toca <b>Nueva reparación</b>, elige la planta y todos los que escaneen su entrada en cualquiera de sus espacios quedarán registrados en ella.':'Cargando…'}</div>`;return}
+  if(!js.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'No hay reparaciones activas. Toca <b>Nueva reparación</b>, elige el área y todos los que escaneen su entrada en cualquiera de sus espacios quedarán registrados en ella.':'Cargando…'}</div>`;return}
   el.innerHTML=js.map(j=>{const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid),cr=crewOf(j.id),sp=p?spacesOf(pid).map(z=>z.name):[];
     return `<section class="job" style="--zc:${pColorOf(p)}">
-      <div><h3>${esc(j.name)}</h3><div class="muted"><span class="zline">${p?pTag(p,1):''}${esc(p?p.name:j.pName||'Planta eliminada')}</span> · desde ${fmtD(j.createdAt)} ${fmtHM(j.createdAt)}</div>
+      <div><h3>${esc(j.name)}</h3><div class="muted"><span class="zline">${p?pTag(p,1):''}${esc((p&&L.sites.get(p.site)?L.sites.get(p.site).name+' › ':'')+(p?p.name:j.pName||'Área eliminada'))}</span> · desde ${fmtD(j.createdAt)} ${fmtHM(j.createdAt)}</div>
         ${sp.length?`<div class="muted" style="font-size:.9rem">Espacios: ${esc(sp.join(', '))}</div>`:''}</div>
       <div class="label">${cr.length} ${cr.length===1?'persona activa':'personas activas'}</div>
       <div class="crew">${cr.length?cr.map(c=>{const w=L.workers.get(c.w)||{name:c.name},[cls,t]=memberStatus(c.w,pid);
         return `<div class="mem">${avatar(w,'s')}<div><b>${esc(w.name||c.name)}</b><span class="pill ${cls}">${esc(t)}</span></div>
           <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')
-        :'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta planta.</p>'}</div>
+        :'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta área.</p>'}</div>
       <button type="button" class="btn danger" data-act="delJob" data-id="${esc(j.id)}" data-confirm>Terminar y eliminar reparación</button>
     </section>`}).join('');
 }
@@ -773,18 +812,21 @@ function renderCards(){
       <span><b>${esc(w.name)}</b><small>${esc([w.role,w.company].filter(Boolean).join(' · ')||'Sin datos de puesto')}</small>
       <span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span></span></button>`}).join('');
 }
-function renderPlants(){
-  const ps=plants(),ov=openVisits(),el=$('#plants');
-  const orphan=zones().filter(z=>z.plant&&!L.plants.has(z.plant));
-  if(!ps.length&&!orphan.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'No hay plantas. Toca <b>Nueva planta</b> y después agrégale sus espacios confinados.':'Cargando…'}</div>`;return}
-  el.innerHTML=ps.map(p=>{const sp=spacesOf(p.id),n=ov.filter(v=>visitPlant(v)===p.id).length,j=jobForPlant(p.id);
-    return `<section class="plant" style="--zc:${pColorOf(p)}">
+function areaBox(p,ov){const sp=spacesOf(p.id),n=ov.filter(v=>visitPlant(v)===p.id).length,j=jobForPlant(p.id);
+  return `<section class="plant" style="--zc:${pColorOf(p)}">
       <header>${pTag(p)}<div><b>${esc(p.name)}</b><small>${esc(p.loc||'')}${p.loc&&(n||j)?' · ':''}${n?n+' adentro':''}${n&&j?' · ':''}${j?'Reparación: '+esc(j.name):''}</small></div>
         <button type="button" class="btn small" data-act="editPlant" data-id="${esc(p.id)}">Editar</button></header>
       <div class="splist">${sp.length?sp.map(z=>{const k=ov.filter(v=>v.z===z.id).length;return `<button type="button" class="sprow" data-act="editZone" data-id="${esc(z.id)}"><span>${esc(z.name)}</span><span class="pill ${k?'in':''}">${k?k+' adentro':'Libre'}</span></button>`}).join('')
         :'<p class="muted">Sin espacios confinados todavía.</p>'}</div>
       <button type="button" class="btn small primary" data-act="newZone" data-plant="${esc(p.id)}">Agregar espacio confinado</button>
-    </section>`}).join('');
+    </section>`}
+function renderPlants(){
+  const ss=sites(),ov=openVisits(),el=$('#plants');
+  if(!ss.length){el.innerHTML=`<div class="empty panel">${ready?'No hay plantas. Toca <b>Nueva planta</b> (ej. GUERRERO), después agrégale sus áreas y a cada área sus espacios confinados.':'Cargando…'}</div>`;return}
+  el.innerHTML=ss.map(x=>{const as=areasOf(x.id),nsp=as.reduce((a,p)=>a+spacesOf(p.id).length,0);
+    return `<section class="site"><header><div class="sitename">${esc(x.name)}<small>${as.length} ${as.length===1?'área':'áreas'} · ${nsp} ${nsp===1?'espacio confinado':'espacios confinados'}</small></div>
+      <div class="tools"><button type="button" class="btn small" data-act="editSite" data-id="${esc(x.id)}">Editar planta</button><button type="button" class="btn small primary" data-act="newPlant" data-site="${esc(x.id)}">Agregar área</button></div></header>
+      ${as.length?`<div class="plants">${as.map(p=>areaBox(p,ov)).join('')}</div>`:'<p class="muted">Esta planta aún no tiene áreas. Toca <b>Agregar área</b>.</p>'}</section>`}).join('');
 }
 function logRows(){const d=$('#logDate').value;return visits().filter(v=>!d||dayKey(v.in)===d)}
 const exceeded=v=>{const lim=visitLimit(v);return !!lim&&((v.open?Date.now():v.out)-v.in)>lim*60000};
@@ -793,15 +835,15 @@ function renderLog(){
   const rows=logRows(),el=$('#log'),d=$('#logDate').value;
   $('#sendBtn').textContent=d?'Enviar bitácora del '+fmtD(new Date(d+'T12:00').getTime()):'Enviar bitácora completa';
   if(!rows.length){el.innerHTML=`<div class="empty">${ready?'No hay registros'+(d?' en ese día.':' todavía. Aparecen aquí al escanear el primer casco.'):'Cargando…'}</div>`;return}
-  el.innerHTML=`<table><thead><tr><th>Persona</th><th>Empresa</th><th>Planta · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(v=>{const lim=visitLimit(v);
-    return `<tr><td>${esc(v.wName)}</td><td>${esc(v.wCo||'')}</td><td>${zLabel(v.z,v.zName,visitPlant(v),v.pName)}</td><td>${esc(v.jobName||'')}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
+  el.innerHTML=`<table><thead><tr><th>Persona</th><th>Empresa</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(v=>{const lim=visitLimit(v);
+    return `<tr><td>${esc(v.wName)}</td><td>${esc(v.wCo||'')}</td><td>${esc(siteName(v))}</td><td>${zLabel(v.z,v.zName,visitPlant(v),v.pName)}</td><td>${esc(v.jobName||'')}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
      <td class="num">${v.open?'':fmtT(v.out)}</td><td class="num">${v.open?'':dur(v.out-v.in)}</td><td>${regName(lim)}</td>
      <td>${exceeded(v)?'<span class="pill over">Excedió</span>':v.open?'<span class="pill in">Adentro</span>':'En tiempo'}</td>
      <td>${v.restMin?v.restMin+' min':''}</td>
      <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td></tr>`}).join('')}</tbody></table>`;
 }
 function csvFile(){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"',d=$('#logDate').value;
-  const rows=[['Persona','Empresa','Clave','Planta','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(logRows().map(v=>[v.wName,v.wCo||'',v.w,plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
+  const rows=[['Persona','Empresa','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(logRows().map(v=>[v.wName,v.wCo||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
   return new File(['﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n')],'bitacora-espacios-confinados-'+(d||'completa-'+dayKey(Date.now()))+'.csv',{type:'text/csv'})}
 function tick(){
   const now=Date.now();
@@ -882,40 +924,51 @@ $('#wForm').addEventListener('submit',async e=>{e.preventDefault();
 /* ---------- plantas y espacios ---------- */
 function renderSwatches(){
   const used=new Set(plants().filter(p=>!editingP||p.id!==editingP.id).map(pColorOf).map(c=>c.toUpperCase())),custom=!ZCOLORS.includes(pColor);
-  $('#pColors').innerHTML=ZCOLORS.map(c=>`<button type="button" class="swatch ${used.has(c.toUpperCase())?'used':''}" style="--zc:${c}" data-act="pickColor" data-c="${c}" aria-pressed="${c===pColor}" aria-label="Color ${c}${used.has(c.toUpperCase())?', ya lo usa otra planta':''}" title="${used.has(c.toUpperCase())?'Ya lo usa otra planta':''}"></button>`).join('')
+  $('#pColors').innerHTML=ZCOLORS.map(c=>`<button type="button" class="swatch ${used.has(c.toUpperCase())?'used':''}" style="--zc:${c}" data-act="pickColor" data-c="${c}" aria-pressed="${c===pColor}" aria-label="Color ${c}${used.has(c.toUpperCase())?', ya lo usa otra área':''}" title="${used.has(c.toUpperCase())?'Ya lo usa otra área':''}"></button>`).join('')
    +`<label class="swatch custom" style="--zc:${custom?pColor:'transparent'}" aria-pressed="${custom}" title="Elegir otro color">${custom?'':'+'}<input type="color" id="pCustom" class="sr" value="${custom?pColor:'#FF6600'}"></label>`;
-  $('#pColorNote').textContent=(used.has(String(pColor).toUpperCase())?'Ese color ya lo usa otra planta; se distinguirán por su clave. ':'')+'Los colores con punto ya están en uso. Con + eliges cualquier otro tono.';
+  $('#pColorNote').textContent=(used.has(String(pColor).toUpperCase())?'Ese color ya lo usa otra área; se distinguirán por su clave. ':'')+'Los colores con punto ya están en uso. Con + eliges cualquier otro tono.';
 }
 document.addEventListener('input',e=>{if(e.target.id==='pCustom'){pColor=e.target.value.toUpperCase();const l=e.target.closest('.swatch');l.style.setProperty('--zc',pColor);l.setAttribute('aria-pressed','true');l.firstChild.nodeType===3&&(l.firstChild.textContent='');document.querySelectorAll('#pColors button.swatch').forEach(b=>b.setAttribute('aria-pressed','false'))}});
 document.addEventListener('change',e=>{if(e.target.id==='pCustom')renderSwatches()});
-function openPlant(p){editingP=p||null;$('#pFormTitle').textContent=p?'Editar planta':'Nueva planta';
+function openPlant(p,sid){editingP=p||null;const ss=sites();if(!ss.length){toast('Primero agrega una planta.');return}
+  $('#pFormTitle').textContent=p?'Editar área':'Nueva área';
+  $('#pSite').innerHTML=ss.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+  $('#pSite').value=p?(p.site||ss[0].id):(sid||selSite||ss[0].id);if(!$('#pSite').value)$('#pSite').value=ss[0].id;
   $('#pName').value=p?p.name:'';$('#pCode').value=p?p.code:'';$('#pLoc').value=p?p.loc||'':'';
   const used=new Set(plants().map(pColorOf));pColor=p?pColorOf(p):(ZCOLORS.find(c=>!used.has(c))||ZCOLORS[plants().length%ZCOLORS.length]);renderSwatches();
   $('#pDel').hidden=!p;$('#dlgPlant').showModal()}
 $('#pName').addEventListener('input',()=>{if(!editingP&&!$('#pCode').dataset.touched)$('#pCode').value=codeFrom($('#pName').value)});
 $('#pCode').addEventListener('input',e=>{e.target.dataset.touched='1'});
 $('#pForm').addEventListener('submit',async e=>{e.preventDefault();
-  const name=$('#pName').value.trim(),code=$('#pCode').value.trim().toUpperCase().slice(0,4),loc=$('#pLoc').value.trim();if(!name||!code)return;
-  const dup=plants().find(p=>p.id!==(editingP&&editingP.id)&&(p.code===code||String(p.name).trim().toLowerCase()===name.toLowerCase()));
-  if(dup){toast('Ya existe una planta con ese nombre o clave ('+dup.code+' · '+dup.name+'). Usa otro para no confundirlas.');return}
-  try{if(editingP)await patch('plants',editingP.id,{name,code,loc,color:pColor});
-      else{const id=uid('p');await put('plants',id,{name,code,loc,color:pColor});selPlant=selPlant||id}
-      $('#pCode').dataset.touched='';$('#dlgPlant').close();toast(editingP?'Planta actualizada':'Planta agregada. Ahora agrégale sus espacios confinados.')}catch(x){}});
-function openZone(z,pid){editingZ=z||null;const ps=plants();if(!ps.length){toast('Primero agrega una planta.');return}
+  const name=$('#pName').value.trim(),code=$('#pCode').value.trim().toUpperCase().slice(0,4),loc=$('#pLoc').value.trim(),site=$('#pSite').value;if(!name||!code||!L.sites.has(site))return;
+  const dup=plants().find(p=>p.id!==(editingP&&editingP.id)&&(p.code===code||(p.site===site&&String(p.name).trim().toLowerCase()===name.toLowerCase())));
+  if(dup){toast('Ya existe un área con esa clave o nombre ('+dup.code+' · '+dup.name+'). Usa otra para no confundirlas.');return}
+  try{if(editingP)await patch('plants',editingP.id,{name,code,loc,color:pColor,site});
+      else{const id=uid('p');await put('plants',id,{name,code,loc,color:pColor,site})}
+      $('#pCode').dataset.touched='';$('#dlgPlant').close();toast(editingP?'Área actualizada':'Área agregada. Ahora agrégale sus espacios confinados.')}catch(x){}});
+let editingS=null;
+function openSite(x){editingS=x||null;$('#sFormTitle').textContent=x?'Editar planta':'Nueva planta';$('#sName').value=x?x.name:'';$('#sDel').hidden=!x;$('#dlgSite').showModal()}
+$('#sForm').addEventListener('submit',async e=>{e.preventDefault();
+  const name=$('#sName').value.trim();if(!name)return;
+  const dup=sites().find(x=>x.id!==(editingS&&editingS.id)&&String(x.name).trim().toLowerCase()===name.toLowerCase());
+  if(dup){toast('Ya existe una planta llamada '+dup.name+'.');return}
+  try{if(editingS)await patch('sites',editingS.id,{name});else await put('sites',uid('s'),{name});
+    $('#dlgSite').close();toast(editingS?'Planta actualizada':'Planta agregada. Ahora agrégale sus áreas.')}catch(x){}});
+function openZone(z,pid){editingZ=z||null;const ps=plants();if(!ps.length){toast('Primero agrega un área.');return}
   $('#zFormTitle').textContent=z?'Editar espacio confinado':'Nuevo espacio confinado';
-  $('#zPlant').innerHTML=ps.map(p=>`<option value="${esc(p.id)}">${esc(p.code+' · '+p.name)}</option>`).join('');
+  $('#zPlant').innerHTML=ps.map(p=>{const x=L.sites.get(p.site);return `<option value="${esc(p.id)}">${esc((x?x.name+' › ':'')+p.code+' · '+p.name)}</option>`}).join('');
   $('#zPlant').value=z?z.plant:(pid||ps[0].id);$('#zName').value=z?z.name:'';$('#zDel').hidden=!z;$('#dlgZone').showModal()}
 $('#zForm').addEventListener('submit',async e=>{e.preventDefault();
   const name=$('#zName').value.trim(),plant=$('#zPlant').value;if(!name||!L.plants.has(plant))return;
   const dup=spacesOf(plant).find(z=>z.id!==(editingZ&&editingZ.id)&&String(z.name).trim().toLowerCase()===name.toLowerCase());
-  if(dup){toast('Esa planta ya tiene un espacio llamado '+dup.name+'.');return}
-  if(editingZ&&editingZ.plant!==plant&&openVisits().some(v=>v.z===editingZ.id)){toast('Hay personas adentro de este espacio. Registra su salida antes de cambiarlo de planta.');return}
+  if(dup){toast('Esa área ya tiene un espacio llamado '+dup.name+'.');return}
+  if(editingZ&&editingZ.plant!==plant&&openVisits().some(v=>v.z===editingZ.id)){toast('Hay personas adentro de este espacio. Registra su salida antes de cambiarlo de área.');return}
   try{if(editingZ)await patch('zones',editingZ.id,{name,plant});else await put('zones',uid('z'),{name,plant});
       $('#dlgZone').close();toast(editingZ?'Espacio actualizado':'Espacio confinado agregado')}catch(x){}});
 
 /* ---------- reparaciones ---------- */
-function openJob(){const ps=plants();if(!ps.length){toast('Primero agrega una planta.');return}
-  $('#jName').value='';$('#jPlant').innerHTML=ps.map(p=>`<option value="${esc(p.id)}">${esc(p.code+' · '+p.name+(jobForPlant(p.id)?' (ya tiene reparación)':''))}</option>`).join('');
+function openJob(){const ps=plants();if(!ps.length){toast('Primero agrega un área.');return}
+  $('#jName').value='';$('#jPlant').innerHTML=ps.map(p=>{const x=L.sites.get(p.site);return `<option value="${esc(p.id)}">${esc((x?x.name+' › ':'')+p.code+' · '+p.name+(jobForPlant(p.id)?' (ya tiene reparación)':''))}</option>`}).join('');
   if(ps.some(p=>p.id===selPlant))$('#jPlant').value=selPlant;$('#dlgJob').showModal()}
 $('#jForm').addEventListener('submit',async e=>{e.preventDefault();
   const name=$('#jName').value.trim(),p=L.plants.get($('#jPlant').value);if(!name||!p)return;
@@ -959,14 +1012,18 @@ function armed(b){if(!b.hasAttribute('data-confirm')||b.dataset.armed)return tru
   setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.txt}},4000);return false}
 const ACT={
   goScan(){setView('escanear')},
+  pickSite(b){if(selSite!==b.dataset.id){selSite=b.dataset.id;selPlant='';selZone='';ls('ec.site',selSite);ls('ec.plant','');ls('ec.cp','')}renderScanSetup()},
   pickPlant(b){if(selPlant!==b.dataset.id){selPlant=b.dataset.id;selZone='';ls('ec.plant',selPlant);ls('ec.cp','')}renderScanSetup()},
   pickZone(b){selZone=b.dataset.id;ls('ec.cp',selZone);renderScanSetup()},
   pickReg(b){selReg=+b.dataset.m;ls('ec.reg',String(selReg));renderScanSetup()},
   pickRest(b){selRest=+b.dataset.m;ls('ec.rest',String(selRest));renderScanSetup()},
   pickColor(b){pColor=b.dataset.c;renderSwatches()},
-  newPlant(){$('#pCode').dataset.touched='';openPlant(null)},editPlant(b){openPlant(L.plants.get(b.dataset.id))},
-  async delPlant(){const p=editingP;if(!p)return;if(spacesOf(p.id).length){toast('Esta planta tiene espacios confinados. Elimínalos o muévelos a otra planta primero.');return}
-    try{await del('plants',p.id);$('#dlgPlant').close();toast('Planta eliminada.')}catch(e){}},
+  newSite(){openSite(null)},editSite(b){openSite(L.sites.get(b.dataset.id))},
+  async delSite(){const x=editingS;if(!x)return;if(areasOf(x.id).length){toast('Esta planta tiene áreas. Elimínalas o muévelas a otra planta primero.');return}
+    try{await del('sites',x.id);$('#dlgSite').close();toast('Planta eliminada.')}catch(e){}},
+  newPlant(b){$('#pCode').dataset.touched='';openPlant(null,b&&b.dataset.site)},editPlant(b){openPlant(L.plants.get(b.dataset.id))},
+  async delPlant(){const p=editingP;if(!p)return;if(spacesOf(p.id).length){toast('Esta área tiene espacios confinados. Elimínalos o muévelos a otra área primero.');return}
+    try{await del('plants',p.id);$('#dlgPlant').close();toast('Área eliminada.')}catch(e){}},
   newZone(b){openZone(null,b&&b.dataset.plant)},editZone(b){openZone(L.zones.get(b.dataset.id))},
   async delZone(){const z=editingZ;if(!z)return;if(openVisits().some(v=>v.z===z.id)){toast('Hay personas adentro. Registra su salida primero.');return}
     try{await del('zones',z.id);$('#dlgZone').close()}catch(e){}},

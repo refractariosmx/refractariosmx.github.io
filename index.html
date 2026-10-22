@@ -291,6 +291,24 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 .dl dd{margin:0;overflow-wrap:anywhere}
 .qrbox{display:flex;flex-direction:column;align-items:center;gap:8px}
 .qrbox img{width:min(260px,100%);border-radius:8px;border:1px solid var(--line)}
+/* Aviso de escaneo a pantalla completa */
+.flash{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;cursor:pointer;color:#FFFFFF;animation:flashIn .25s ease-out}
+.flash[data-kind="in"]{background:#0E8A4F}
+.flash[data-kind="out"]{background:#FFC400;color:#1E2023}
+.flash[data-kind="err"]{background:#C81E1E}
+.flash .fverb{font-family:var(--display);font-size:clamp(4rem,18vw,9rem);font-weight:700;letter-spacing:.05em;line-height:.9}
+.flash .ficon{width:clamp(90px,24vw,150px);height:clamp(90px,24vw,150px);border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22);font-size:clamp(3.5rem,13vw,6rem);font-weight:700;line-height:1}
+.flash[data-kind="out"] .ficon{background:rgba(0,0,0,.12)}
+.flash .av.xl{width:clamp(110px,30vw,170px);height:clamp(110px,30vw,170px);border:6px solid currentColor;font-size:2.6rem}
+.flash .fname{font-size:clamp(1.5rem,6vw,2.6rem);font-weight:700;overflow-wrap:anywhere;max-width:20ch}
+.flash .finfo{font-size:clamp(1rem,4vw,1.4rem);font-weight:600;max-width:32ch}
+.flash .fnote{padding:8px 14px;border-radius:10px;background:rgba(0,0,0,.2);font-weight:600;max-width:32ch}
+.flash[data-kind="out"] .fnote{background:rgba(0,0,0,.1)}
+.flash .ftap{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));font-size:.9rem;opacity:.8}
+.flash .fbar{position:absolute;top:0;left:0;height:8px;background:currentColor;opacity:.5;animation:fbar var(--fdur,3s) linear forwards}
+@keyframes flashIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}
+@keyframes fbar{from{width:100%}to{width:0}}
+@media (prefers-reduced-motion:reduce){.flash,.flash .fbar{animation:none}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--head);color:var(--head-ink);border-left:6px solid var(--yellow);padding:12px 18px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100vw - 32px);box-shadow:var(--shadow)}
 </style>
 </head>
@@ -515,6 +533,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 
 <dialog id="dlgSync"><div class="dlg" id="syncBody"></div></dialog>
 
+<div class="flash" id="flash" role="alert" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="config-sync.js"></script>
@@ -679,9 +698,24 @@ async function handleCode(code,via){
   if(!w){showResult({kind:'err',title:'Clave desconocida',msg:'Esta clave no está registrada: '+code.slice(0,40)});return}
   try{showResult(await toggle(w,via))}catch(e){showResult({kind:'err',msg:'No se pudo guardar el registro.'})}
 }
+let flashT;
+function hideFlash(){clearTimeout(flashT);$('#flash').hidden=true}
+function flash(r){
+  const el=$('#flash'),ms=r.kind==='err'?4500:3000;clearTimeout(flashT);
+  el.dataset.kind=r.kind;el.style.setProperty('--fdur',ms+'ms');
+  if(r.kind==='err'){el.innerHTML=`<div class="fbar"></div><div class="ficon">✕</div><div class="fverb" style="font-size:clamp(2.6rem,11vw,5rem)">${esc(r.title||'No registrado')}</div><div class="finfo">${esc(r.msg||'')}</div><div class="ftap">Toca para cerrar</div>`;
+    tone([[220,.25],[0,.08],[220,.35]]);try{navigator.vibrate&&navigator.vibrate([300,100,300])}catch(e){}}
+  else{const place=placeText(r.v);
+    el.innerHTML=`<div class="fbar"></div>${avatar(r.w,'xl')}<div class="fverb">${r.kind==='in'?'✓ ENTRADA':'SALIDA'}</div>
+      <div class="fname">${esc(r.w.name)}</div><div class="finfo">${esc(place)} · ${fmtHM(r.t)}</div>
+      ${r.kind==='in'?`<div class="finfo">Régimen: ${regName(r.lim)}</div>`:`<div class="finfo">Estuvo adentro ${dur(r.d)}${r.rest?' · descanso '+r.rest+' min':''}</div>`}
+      ${r.warn?`<div class="fnote">⚠ ${esc(r.warn)}</div>`:''}<div class="ftap">Toca para cerrar</div>`;
+    try{navigator.vibrate&&navigator.vibrate(r.kind==='in'?[120]:[90,70,90])}catch(e){}}
+  el.hidden=false;flashT=setTimeout(hideFlash,r.warn?5000:ms);
+}
 let resT;
 function showResult(r){
-  const el=$('#result');el.dataset.kind=r?r.kind:'';clearTimeout(resT);
+  const el=$('#result');el.dataset.kind=r?r.kind:'';clearTimeout(resT);if(r)flash(r);
   if(!r){el.innerHTML='<p class="label">Esperando escaneo</p><p class="muted">Aquí aparece quién entró o salió y a qué hora.</p>';return}
   resT=setTimeout(()=>showResult(null),12000);
   if(r.kind==='err'){el.innerHTML=`<div class="verb">${esc(r.title||'No registrado')}</div><p>${esc(r.msg)}</p>`;return}
@@ -1091,6 +1125,7 @@ const ACT={
     }else{try{await downloads.save({filename:f.name,data:f})}catch(e){}toast('Este dispositivo no permite compartir archivos. Se descargó la bitácora; adjúntala en tu correo.')}
   }
 };
+$('#flash').addEventListener('click',hideFlash);
 document.addEventListener('click',e=>{
   const n=e.target.closest('nav button');if(n){setView(n.dataset.view);return}
   const b=e.target.closest('[data-act]');if(!b||!ACT[b.dataset.act])return;

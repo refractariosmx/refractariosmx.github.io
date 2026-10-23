@@ -291,7 +291,7 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 
 /* Bitácora */
 .tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:1080px}
+table{border-collapse:collapse;width:100%;min-width:1160px}
 th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 td.num,th.num{text-align:right}
@@ -352,6 +352,25 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 .sign{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:8px 32px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:4px 10px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--line)}
 .sign .sig{font-family:"Caveat","Segoe Script","Brush Script MT",cursive;font-size:1.45rem;font-weight:700;color:var(--ink);line-height:1}
 .sign a{color:var(--ink);font-weight:600;font-size:.8rem}
+/* Personal por especialidad */
+.pfilters{display:flex;flex-direction:column;gap:10px}
+.pfilters input{min-height:50px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:1.05rem;width:100%}
+.pfilters .chip{min-height:42px;min-width:0;font-size:1.05rem;padding:0 14px}
+.pfilters .chip small{margin-left:6px}
+.sdot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--sc,#475569);margin-right:6px;vertical-align:middle}
+.specgrp{border-radius:12px;background:var(--surface);border:1px solid var(--line);border-left:8px solid var(--sc,#475569);overflow:hidden}
+.specgrp>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 14px;min-height:56px}
+.specgrp{scroll-margin-top:12px}
+.coblock .specgrp+.specgrp{margin-top:-4px}
+.specgrp>summary::-webkit-details-marker{display:none}
+.specgrp>summary::before{content:"▸";font-size:1.1rem;color:var(--muted);transition:transform .15s}
+.specgrp[open]>summary::before{transform:rotate(90deg)}
+.specgrp>summary b{font-family:var(--display);font-size:1.4rem;letter-spacing:.04em;text-transform:uppercase}
+.specgrp>summary .muted{flex:1;min-width:120px}
+.specbody{display:flex;flex-direction:column;gap:10px;padding:0 12px 12px}
+.cosub{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:6px 4px 0;font-weight:700;border-top:1px dashed var(--line)}
+.cosub:first-child{border-top:0;padding-top:0}
+.spectag{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--sc,#475569);color:#FFFFFF;font-size:.75rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-top:2px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--head);color:var(--head-ink);border-left:6px solid var(--yellow);padding:12px 18px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100vw - 32px);box-shadow:var(--shadow)}
 </style>
 </head>
@@ -462,7 +481,12 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <h2>Personal autorizado</h2>
       <button type="button" class="btn primary" data-act="newWorker">Nueva persona</button>
     </div>
-    <p class="muted">El personal se divide en <b>P</b> (propia) y <b>C</b> (contratista). Quien tenga vencida la capacitación de espacios confinados aparece marcado en rojo y no puede entrar.</p>
+    <p class="muted">Organizado por <b>P</b> propio o <b>C</b> contratista, luego por <b>especialidad</b> y, en contratistas, por <b>empresa</b>. Cada especialidad tiene su color, también en la etiqueta del casco. Quien tenga vencida la capacitación aparece en rojo y no puede entrar.</p>
+    <div class="pfilters">
+      <input type="search" id="pSearch" placeholder="Buscar por nombre, clave, puesto o contratista" autocomplete="off">
+      <div class="chips" id="pfType"></div>
+      <div class="chips" id="pfSpec"></div>
+    </div>
     <div class="companies" id="cards"></div>
     <input type="file" accept="image/*" id="coFile" class="sr" tabindex="-1">
   </section>
@@ -484,7 +508,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <button type="button" class="btn" data-act="today">Hoy</button>
         <button type="button" class="btn" data-act="allDays">Todos los días</button>
         <button type="button" class="btn primary" data-act="sendLog" id="sendBtn">Enviar bitácora</button>
-        <button type="button" class="btn" data-act="csv">Guardar CSV</button>
+        <button type="button" class="btn" data-act="pdfSave">Guardar PDF</button>
         <button type="button" class="btn" data-act="backup">Respaldar datos</button>
         <label class="btn" for="restoreFile" tabindex="0">Restaurar respaldo</label>
         <input type="file" accept="application/json,.json" id="restoreFile" class="sr" tabindex="-1">
@@ -518,6 +542,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <div class="chips" id="wType"><button type="button" class="chip" data-act="pickType" data-t="P"><span class="tb tb-P">P</span> Propia</button><button type="button" class="chip" data-act="pickType" data-t="C"><span class="tb tb-C">C</span> Contratista</button></div></div>
       <div class="field" id="wCoBox" hidden><label class="label" for="wCo">Nombre de la contratista</label><input id="wCo" maxlength="80" list="coList" placeholder="Ej. Servicios Industriales del Norte"><datalist id="coList"></datalist></div>
       <div class="field"><label class="label" for="wRole">Puesto</label><input id="wRole" maxlength="60"></div>
+      <div class="field"><label class="label" for="wSpec">Especialidad</label><input id="wSpec" maxlength="40" list="specList" placeholder="Ej. Refractario, Mecánico"><datalist id="specList"><option value="Refractario"></option><option value="Mecánico"></option><option value="Eléctrico"></option><option value="Soldadura"></option><option value="Instrumentación"></option><option value="Civil"></option><option value="Pintura"></option><option value="Limpieza industrial"></option><option value="Seguridad (EHS)"></option><option value="Supervisión"></option><option value="Operación"></option></datalist></div>
       <div class="field"><label class="label" for="wBlood">Tipo de sangre</label>
         <select id="wBlood"><option value="">Sin dato</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
       <div class="field"><label class="label" for="wSup">Supervisor</label><select id="wSup"></select></div>
@@ -597,14 +622,29 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 
 <dialog id="dlgExt">
   <form class="dlg" id="xForm">
-    <h2>Extender reparación</h2>
+    <h2>Fechas de la reparación</h2>
     <p id="xInfo" class="muted"></p>
-    <div class="field"><label class="label" for="xEnd">Nueva fecha de terminación</label><input type="date" id="xEnd" required></div>
+    <div class="grid2">
+      <div class="field"><label class="label" for="xStart">Fecha de inicio</label><input type="date" id="xStart" required></div>
+      <div class="field"><label class="label" for="xEnd">Fecha de terminación</label><input type="date" id="xEnd" required></div>
+    </div>
     <div class="acts">
       <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
-      <button type="submit" class="btn primary">Extender</button>
+      <button type="submit" class="btn primary">Guardar fechas</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="dlgShare">
+  <div class="dlg">
+    <h2>Bitácora lista</h2>
+    <p class="muted" id="shareInfo"></p>
+    <div class="acts">
+      <button type="button" class="btn" data-act="closeDlg">Cerrar</button>
+      <button type="button" class="btn" data-act="saveShared">Guardar PDF</button>
+      <button type="button" class="btn primary" data-act="shareNow">Enviar</button>
+    </div>
+  </div>
 </dialog>
 
 <dialog id="dlgSync"><div class="dlg" id="syncBody"></div></dialog>
@@ -665,6 +705,11 @@ const visitPlant=v=>v.p||plantOfZone(v.z);
 const coId=name=>'c-'+slug(String(name||'').trim()||'sin-empresa');
 const coOf=name=>L.companies.get(coId(name));
 const certExpired=w=>!!(w&&w.cert&&w.cert<dayKey(Date.now()));
+const SPEC_COLORS={'refractario':'#C2410C','mecanico':'#1D4ED8','electrico':'#A16207','soldadura':'#B91C1C','instrumentacion':'#7C3AED','civil':'#57534E','pintura':'#BE185D','limpieza industrial':'#0E7490','seguridad (ehs)':'#15803D','supervision':'#1F2937','operacion':'#0F766E'};
+const specKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+function specColor(n){const k=specKey(n);if(!k)return '#6B7280';if(SPEC_COLORS[k])return SPEC_COLORS[k];let h=0;for(const ch of k)h=(h*31+ch.charCodeAt(0))>>>0;return ['#0369A1','#9333EA','#B45309','#047857','#BE123C','#4338CA'][h%6]}
+const specLabel=n=>String(n||'').trim()||'Sin especialidad';
+const specOf=v=>v.wSpec||((L.workers.get(v.w)||{}).spec)||'';
 const typeOf=v=>v.wType||((L.workers.get(v.w)||{}).type)||'';
 const typeName=t=>t==='P'?'Propia':t==='C'?'Contratista':'';
 function typeBadge(t,cls=''){return t==='P'||t==='C'?`<span class="tb tb-${t} ${cls}" title="${typeName(t)}">${t}</span>`:`<span class="tb tb-x ${cls}" title="Sin clasificar">?</span>`}
@@ -772,7 +817,7 @@ async function toggle(w,via){
   if(certExpired(w))return {kind:'err',title:'Acceso bloqueado',msg:w.name+' tiene vencida su capacitación de espacios confinados (venció el '+w.cert+'). No puede entrar hasta renovarla y actualizar la fecha en Personal.'};
   const rest=activeRestOf(w.id);let restWarn='';
   if(rest){if(now<rest.restEnd)restWarn='Entró antes de terminar su descanso: le faltaban '+dur(rest.restEnd-now)+'.';await patch('visits',rest.id,{restDone:true})}
-  const st=L.sites.get(p.site),j=jobForPlant(p.id),lim=selReg,v={w:w.id,wName:w.name,wCo:w.company||'',wType:w.type||'',supName:supOf(w),s:p.site||'',sName:st?st.name:'',p:p.id,pName:p.name,z:z.id,zName:z.name,in:now,out:0,open:true,via,lim,job:j?j.id:'',jobName:j?j.name:''};
+  const st=L.sites.get(p.site),j=jobForPlant(p.id),lim=selReg,v={w:w.id,wName:w.name,wCo:w.company||'',wType:w.type||'',wSpec:w.spec||'',supName:supOf(w),s:p.site||'',sName:st?st.name:'',p:p.id,pName:p.name,z:z.id,zName:z.name,in:now,out:0,open:true,via,lim,job:j?j.id:'',jobName:j?j.name:''};
   await put('visits',uid('v'),v);
   if(j)await addToJob(j,w);
   beep(true);
@@ -872,7 +917,7 @@ function personRow(v){
   const lim=visitLimit(v),st=status(v.in,lim),w=L.workers.get(v.w)||{name:v.wName};
   return `<div class="prow" data-since="${v.in}" data-limit="${lim}" data-st="${st}">
     ${avatar(w)}
-    <div class="who"><b>${esc(v.wName)}</b><span class="cow">${typeBadge(typeOf(v),'s')} ${esc(v.wCo?v.wCo+' · ':'')}${v.supName?'Sup. '+esc(v.supName)+' · ':''}entró <span class="num">${fmtHM(v.in)}</span></span></div>
+    <div class="who"><b>${esc(v.wName)}</b><span class="cow">${typeBadge(typeOf(v),'s')} ${esc(specOf(v)?specOf(v)+' · ':'')}${v.supName?'Sup. '+esc(v.supName)+' · ':''}entró <span class="num">${fmtHM(v.in)}</span></span></div>
     <div class="timer num">${dur(Date.now()-v.in)}</div>
     ${lim?`<div class="bar"><i style="width:${pct(v.in,lim).toFixed(1)}%"></i></div>`:''}
     <div class="foot"><span class="pill"><span class="stlabel">${lim?ST[st]:'Sin límite'}</span></span>${regSelect(v)}
@@ -935,9 +980,9 @@ function renderScanSetup(){
 }
 function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro · '+v.zName]:['in','Adentro en otra área'];
   return activeRestOf(wid)?['rest','En descanso']:['','Afuera']}
-function jobDates(j){return j.start||j.end?`${j.start?fmtDay(j.start):'—'} → ${j.end?fmtDay(j.end):'sin fecha'}`:'Sin fechas'}
+function jobDates(j){const st=j.start||(j.createdAt?dayKey(j.createdAt):'');return `${st?fmtDay(st):'—'} → ${j.end?fmtDay(j.end):'sin fecha de terminación'}`}
 function jobPill(j){if(j.status==='closed')return '<span class="pill">Cerrada</span>';
-  if(!j.end)return '<span class="pill">Sin fecha de terminación</span>';
+  if(!j.end)return '<span class="pill warn">Falta fecha de terminación</span>';
   const n=daysLeft(j);if(n<0)return `<span class="pill over">VENCIDA desde el ${fmtDay(j.end)}</span>`;
   return `<span class="pill ${n<=1?'warn':'in'}">${n===0?'Vence hoy':n===1?'Vence mañana':'Faltan '+n+' días'}</span>`}
 function jobPlace(j){const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid);return `<span class="zline">${p?pTag(p,1):''}${esc((p&&L.sites.get(p.site)?L.sites.get(p.site).name+' › ':'')+(p?p.name:j.pName||'Área eliminada'))}</span>`}
@@ -956,7 +1001,7 @@ function renderJobs(){
         return `<div class="mem">${avatar(w,'s')}<div><b>${esc(w.name||c.name)}</b><span class="pill ${cls}">${esc(t)}</span></div>
           <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')
         :'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta área.</p>'}</div>
-      <div class="tools"><button type="button" class="btn ${x?'primary':''}" data-act="extendJob" data-id="${esc(j.id)}">${j.end?'Extender fecha':'Poner fecha de terminación'}</button>
+      <div class="tools"><button type="button" class="btn ${x?'primary':''}" data-act="extendJob" data-id="${esc(j.id)}">${j.end?'Extender o cambiar fechas':'Poner fechas'}</button>
         <button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}" data-confirm>Cerrar y enviar bitácora</button></div>
     </section>`}).join('');
   if(cl.length)h+=`<div class="sitehead" style="margin-top:12px">Reparaciones cerradas</div>`+cl.map(j=>`<section class="job closed">
@@ -965,18 +1010,39 @@ function renderJobs(){
         <button type="button" class="btn small danger" data-act="delJob" data-id="${esc(j.id)}" data-confirm>Quitar de la lista</button></div></section>`).join('');
   el.innerHTML=h;
 }
+let pfType='all',pfSpec='all',pfQ='',pfOpen='';
+function workerCard(w,ov){const v=ov.find(o=>o.w===w.id),r=!v&&activeRestOf(w.id),x=certExpired(w);
+  return `<button type="button" class="card wk ${x?'blocked':''}" data-act="openWorker" data-id="${esc(w.id)}">${avatar(w)}
+    <span><b>${esc(w.name)}</b><small>${esc([w.role||'Sin puesto',w.id].join(' · '))}</small>${w.isSup?'<small><b>Supervisor</b></small>':supOf(w)?`<small>Sup. ${esc(supOf(w))}</small>`:''}
+    ${x?'<span class="pill over">Sin acceso · capacitación vencida</span>':`<span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span>`}</span>${typeBadge(w.type)}</button>`}
 function renderCards(){
-  const ws=workers(),ov=openVisits(),el=$('#cards');
-  $('#coList').innerHTML=[...new Set(ws.filter(w=>w.type==='C').map(w=>String(w.company||'').trim()).filter(Boolean))].sort().map(n=>`<option value="${esc(n)}"></option>`).join('');
-  if(!ws.length){el.innerHTML=`<div class="empty panel">${ready?'Todavía no hay personas registradas. Toca <b>Nueva persona</b> para agregar la primera y generar su código QR.':'Cargando…'}</div>`;return}
-  const groups=[['P','Personal propio'],['C','Contratistas'],['','Sin clasificar']].map(([t,label])=>({t,label,ws:ws.filter(w=>(w.type==='P'||w.type==='C'?w.type:'')===t)})).filter(g=>g.ws.length);
+  const all=workers(),ov=openVisits(),el=$('#cards');
+  $('#coList').innerHTML=[...new Set(all.filter(w=>w.type==='C').map(w=>String(w.company||'').trim()).filter(Boolean))].sort().map(n=>`<option value="${esc(n)}"></option>`).join('');
+  const tk=w=>w.type==='P'||w.type==='C'?w.type:'x';
+  const cnt=t=>all.filter(w=>t==='all'||tk(w)===t).length;
+  $('#pfType').innerHTML=[['all','Todos'],['P','P · Propio'],['C','C · Contratistas'],['x','Sin clasificar']].filter(([t])=>t!=='x'||cnt('x')).map(([t,l])=>`<button type="button" class="chip" data-act="pfType" data-t="${t}" aria-pressed="${pfType===t}">${l}<small>${cnt(t)}</small></button>`).join('');
+  const inType=all.filter(w=>pfType==='all'||tk(w)===pfType);
+  const specs=[...new Map(inType.map(w=>[specKey(w.spec),specLabel(w.spec)])).entries()].sort((a,b)=>(a[0]?0:1)-(b[0]?0:1)||a[1].localeCompare(b[1],'es'));
+  if(pfSpec!=='all'&&!specs.some(([k])=>k===pfSpec))pfSpec='all';
+  $('#pfSpec').innerHTML=specs.length>1?`<button type="button" class="chip" data-act="pfSpec" data-k="all" aria-pressed="${pfSpec==='all'}">Todas las especialidades</button>`+specs.map(([k,l])=>`<button type="button" class="chip" data-act="pfSpec" data-k="${esc(k)}" aria-pressed="${pfSpec===k}"><span class="sdot" style="--sc:${specColor(l)}"></span>${esc(l)}<small>${inType.filter(w=>specKey(w.spec)===k).length}</small></button>`).join(''):'';
+  if(!all.length){el.innerHTML=`<div class="empty panel">${ready?'Todavía no hay personas registradas. Toca <b>Nueva persona</b> para agregar la primera y generar su código QR.':'Cargando…'}</div>`;return}
+  const q=specKey(pfQ);
+  const ws=inType.filter(w=>(pfSpec==='all'||specKey(w.spec)===pfSpec)&&(!q||specKey([w.name,w.id,w.role,w.company,w.spec].join(' ')).includes(q)));
+  if(!ws.length){el.innerHTML='<div class="empty panel">No hay personas que coincidan con la búsqueda o los filtros.</div>';return}
+  const groups=[['P','Personal propio'],['C','Contratistas'],['x','Sin clasificar']].map(([t,label])=>({t,label,ws:ws.filter(w=>tk(w)===t)})).filter(g=>g.ws.length);
+  const openAll=!!q;
   el.innerHTML=groups.map(g=>{const inside=g.ws.filter(w=>ov.some(o=>o.w===w.id)).length,blk=g.ws.filter(certExpired).length;
-    return `<section class="coblock"><header>${typeBadge(g.t,'l')}
-      <div class="coname">${g.label}<small>${g.ws.length} ${g.ws.length===1?'persona':'personas'}${inside?' · '+inside+' adentro':''}${blk?' · '+blk+' sin acceso por capacitación vencida':''}${g.t?'':' · edítalos para elegir P o C'}</small></div></header>
-      <div class="cards">${g.ws.map(w=>{const v=ov.find(o=>o.w===w.id),r=!v&&activeRestOf(w.id),x=certExpired(w);
-        return `<button type="button" class="card wk ${x?'blocked':''}" data-act="openWorker" data-id="${esc(w.id)}">${avatar(w)}
-        <span><b>${esc(w.name)}</b><small>${esc([w.role||'Sin puesto',w.type==='C'?w.company:''].filter(Boolean).join(' · '))}</small>${w.isSup?'<small><b>Supervisor</b></small>':supOf(w)?`<small>Sup. ${esc(supOf(w))}</small>`:''}
-        ${x?'<span class="pill over">Sin acceso · capacitación vencida</span>':`<span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span>`}</span>${typeBadge(w.type)}</button>`}).join('')}</div></section>`}).join('');
+    const bySpec=new Map();for(const w of g.ws){const k=specKey(w.spec);if(!bySpec.has(k))bySpec.set(k,{label:specLabel(w.spec),ws:[]});bySpec.get(k).ws.push(w)}
+    const sg=[...bySpec.entries()].sort((a,b)=>(a[0]?0:1)-(b[0]?0:1)||a[1].label.localeCompare(b[1].label,'es'));
+    return `<section class="coblock"><header>${typeBadge(g.t==='x'?'':g.t,'l')}
+      <div class="coname">${g.label}<small>${g.ws.length} ${g.ws.length===1?'persona':'personas'}${inside?' · '+inside+' adentro':''}${blk?' · '+blk+' sin acceso por capacitación vencida':''}${g.t==='x'?' · edítalos para elegir P o C':''}</small></div></header>
+      ${sg.map(([k,sp])=>{const col=specColor(sp.label);
+        let body;
+        if(g.t==='C'){const byCo=new Map();for(const w of sp.ws){const n=String(w.company||'').trim()||'Sin nombre de contratista';if(!byCo.has(n))byCo.set(n,[]);byCo.get(n).push(w)}
+          body=[...byCo.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([co,cw])=>`<div class="cosub"><span>${esc(co)} · ${cw.length}</span><button type="button" class="btn small" data-act="printLabels" data-t="C" data-k="${esc(k)}" data-co="${esc(co)}">Imprimir etiquetas</button></div><div class="cards">${cw.map(w=>workerCard(w,ov)).join('')}</div>`).join('')}
+        else body=`<div class="cards">${sp.ws.map(w=>workerCard(w,ov)).join('')}</div>`;
+        const gid=g.t+'|'+k;return `<details class="specgrp" data-g="${esc(gid)}" style="--sc:${col}" ${openAll||pfOpen===gid||(pfSpec!=='all'&&sg.length===1&&groups.length===1)?'open':''}><summary><b>${esc(sp.label)}</b><span class="muted">${sp.ws.length} ${sp.ws.length===1?'persona':'personas'}${(()=>{const n=sp.ws.filter(w=>ov.some(o=>o.w===w.id)).length,x=sp.ws.filter(certExpired).length;return (n?' · '+n+' adentro':'')+(x?' · '+x+' sin acceso':'')})()} · toca para ver</span>${g.t!=='C'?`<button type="button" class="btn small" data-act="printLabels" data-t="${g.t}" data-k="${esc(k)}">Imprimir etiquetas</button>`:''}</summary><div class="specbody">${body}</div></details>`}).join('')}
+      </section>`}).join('');
 }
 function areaBox(p,ov){const sp=spacesOf(p.id),n=ov.filter(v=>visitPlant(v)===p.id).length,j=jobForPlant(p.id);
   return `<section class="plant" style="--zc:${pColorOf(p)}">
@@ -999,12 +1065,12 @@ const exceeded=v=>{const lim=visitLimit(v);return !!lim&&((v.open?Date.now():v.o
 const plantName=v=>{const p=L.plants.get(visitPlant(v));return p?p.name:v.pName||''};
 let logMode=ls('ec.logmode')||'job';
 function rowHtml(v){const lim=visitLimit(v);
-  return `<tr><td>${esc(v.wName)}</td><td>${typeBadge(typeOf(v),'s')} ${esc(v.wCo||'')}</td><td>${esc(siteName(v))}</td><td>${zLabel(v.z,v.zName,visitPlant(v),v.pName)}</td><td>${esc(v.jobName||'')}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
+  return `<tr><td>${esc(v.wName)}</td><td>${typeBadge(typeOf(v),'s')} ${typeName(typeOf(v))}</td><td>${esc(specOf(v))}</td><td>${esc(siteName(v))}</td><td>${zLabel(v.z,v.zName,visitPlant(v),v.pName)}</td><td>${esc(v.jobName||'')}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
      <td class="num">${v.open?'':fmtT(v.out)}</td><td class="num">${v.open?'':dur(v.out-v.in)}</td><td>${regName(lim)}</td>
      <td>${exceeded(v)?'<span class="pill over">Excedió</span>':v.open?'<span class="pill in">Adentro</span>':'En tiempo'}</td>
      <td>${v.restMin?v.restMin+' min':''}</td>
      <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td></tr>`}
-const tableHtml=rows=>`<table><thead><tr><th>Persona</th><th>Empresa</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
+const tableHtml=rows=>`<table><thead><tr><th>Persona</th><th>Tipo</th><th>Especialidad</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
 function jobGroups(rows){const g=new Map();
   for(const v of rows){const k=v.job||'';if(!g.has(k))g.set(k,[]);g.get(k).push(v)}
   return [...g.entries()].map(([k,vs])=>({k,vs,j:L.jobs.get(k)})).sort((a,b)=>(a.k?0:1)-(b.k?0:1)||((a.j&&a.j.status!=='closed')?0:1)-((b.j&&b.j.status!=='closed')?0:1)||b.vs[0].in-a.vs[0].in)}
@@ -1023,13 +1089,68 @@ function renderLog(){
       <details><summary>Ver los ${vs.length} registros</summary><div class="tablewrap">${tableHtml(vs)}</div></details></section>`}).join('')}</div>`;
 }
 function csvFor(rows,fname){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
-  const out=[['Persona','Tipo','Contratista','Supervisor','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(rows.map(v=>[v.wName,typeName(typeOf(v)),v.wCo||'',v.supName||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
+  const out=[['Persona','Tipo','Especialidad','Supervisor','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(rows.map(v=>[v.wName,typeName(typeOf(v)),specOf(v),v.supName||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
   return new File(['﻿'+out.map(r=>r.map(q).join(',')).join('\r\n')],fname,{type:'text/csv'})}
 function csvFile(){const d=$('#logDate').value;return csvFor(logRows(),'bitacora-espacios-confinados-'+(d||'completa-'+dayKey(Date.now()))+'.csv')}
+let pendingShare=null;
+function askShare(f,title,text){pendingShare={f,title,text};$('#shareInfo').textContent=f.name;$('#dlgShare').showModal()}
 function shareFile(f,title,text){
-  if(navigator.canShare&&navigator.canShare({files:[f]}))return navigator.share({files:[f],title,text}).catch(e=>{if(e&&e.name!=='AbortError')toast('No se pudo abrir el menú para compartir.')});
-  return downloads.save({filename:f.name,data:f}).then(()=>toast('Este dispositivo no permite compartir archivos. Se descargó la bitácora; adjúntala en tu correo.'),()=>{})}
-function jobFile(j,k,rows){const name=j?j.name:(rows[0]&&rows[0].jobName)||'sin-reparacion';return csvFor(rows,'bitacora-reparacion-'+slug(name)+'-'+dayKey(Date.now())+'.csv')}
+  if(navigator.canShare&&navigator.canShare({files:[f]}))return navigator.share({files:[f],title,text}).catch(e=>{
+    if(e&&e.name==='NotAllowedError')askShare(f,title,text);else if(e&&e.name!=='AbortError')toast('No se pudo abrir el menú para compartir.')});
+  return downloads.save({filename:f.name,data:f}).then(()=>toast('Este dispositivo no permite compartir archivos. Se descargó la bitácora en PDF; adjúntala en tu correo.'),()=>{})}
+/* ---------- bitácora en PDF ---------- */
+const PDFLIB='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+async function ensurePdfLib(){if(!window.PDFLib)await loadScript(PDFLIB);if(!window.PDFLib)throw new Error('pdf');return window.PDFLib}
+const pdfSafe=t=>String(t??'').replace(/[→›]/g,'-').replace(/[^\x00-\xFF–—‘’“”•€]/g,'');
+async function pdfFor(rows,o){
+  const {PDFDocument,StandardFonts,rgb}=await ensurePdfLib();
+  rows=[...rows].sort((a,b)=>a.in-b.in);
+  const doc=await PDFDocument.create();doc.setTitle(pdfSafe(o.title));doc.setAuthor('Control de Espacios Confinados');doc.setCreator('Control de Espacios Confinados · CarlosR3');doc.setProducer('Control de Espacios Confinados');
+  const F=await doc.embedFont(StandardFonts.Helvetica),B=await doc.embedFont(StandardFonts.HelveticaBold);
+  const W=792,H=612,M=32,ink=rgb(.12,.13,.14),mut=rgb(.37,.38,.4),yel=rgb(1,.77,0),dark=rgb(.15,.16,.17),red=rgb(.78,.12,.12),grn=rgb(.07,.5,.29),zeb=rgb(.95,.95,.96),lin=rgb(.8,.81,.82),wht=rgb(1,1,1);
+  const fit=(t,f,sz,w)=>{t=pdfSafe(t);if(f.widthOfTextAtSize(t,sz)<=w)return t;while(t.length>1&&f.widthOfTextAtSize(t+'...',sz)>w)t=t.slice(0,-1);return t+'...'};
+  let cols=[['Persona',128,v=>v.wName],['Tipo',52,v=>typeName(typeOf(v))],['Especialidad',62,v=>specOf(v)],['Supervisor',80,v=>v.supName||''],['Planta · área · espacio',o.job?128:104,v=>{const p=L.plants.get(visitPlant(v));return [siteName(v),p?p.code:plantName(v),v.zName].filter(Boolean).join(' · ')}]]
+    .concat(o.job?[]:[['Reparación',84,v=>v.jobName||'']])
+    .concat([['Fecha',40,v=>fmtD(v.in)],['Entrada',46,v=>fmtHM(v.in)],['Salida',46,v=>v.open?'Adentro':fmtHM(v.out)],['Tiempo',40,v=>v.open?'':dur(v.out-v.in)],['Régimen',50,v=>regName(visitLimit(v))],['Excedió',38,v=>exceeded(v)?'Sí':'No'],['Descanso',44,v=>v.restMin?v.restMin+' min':'']]);
+  const tw=cols.reduce((a,c)=>a+c[1],0),k=(W-2*M)/tw;cols=cols.map(c=>[c[0],c[1]*k,c[2]]);
+  const now=new Date(),gen='Generado el '+now.toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})+' a las '+fmtHM(now.getTime());
+  const ppl=new Set(rows.map(v=>v.w)).size,tot=rows.reduce((a,v)=>a+((v.open?Date.now():v.out)-v.in),0),exc=rows.filter(exceeded).length;
+  let page,y;
+  const head=()=>{page=doc.addPage([W,H]);
+    page.drawRectangle({x:0,y:H-58,width:W,height:58,color:dark});
+    for(let i=-20;i<W+20;i+=24)page.drawLine({start:{x:i,y:H},end:{x:i+10,y:H-8},thickness:7,color:yel});
+    page.drawText(pdfSafe('BITÁCORA DE ESPACIOS CONFINADOS'),{x:M,y:H-34,size:15,font:B,color:yel});
+    page.drawText(fit(o.title,F,9,W-2*M-200),{x:M,y:H-49,size:9,font:F,color:wht});
+    const g=pdfSafe(gen);page.drawText(g,{x:W-M-F.widthOfTextAtSize(g,8),y:H-34,size:8,font:F,color:rgb(.8,.8,.82)});
+    y=H-76};
+  const tableHead=()=>{page.drawRectangle({x:M,y:y-14,width:W-2*M,height:16,color:yel});let x=M;
+    for(const c of cols){page.drawText(fit(c[0],B,7.5,c[1]-6),{x:x+3,y:y-9,size:7.5,font:B,color:ink});x+=c[1]}y-=16};
+  head();
+  for(const l of (o.lines||[])){page.drawText(fit(l,F,9.5,W-2*M),{x:M,y,size:9.5,font:F,color:ink});y-=14}
+  const boxes=[[String(ppl),'personas'],[String(rows.length),'ingresos'],[dur(tot),'tiempo total adentro'],[String(exc),'excedieron su tiempo']];
+  let bx=M;y-=4;for(const [a,b2] of boxes){page.drawRectangle({x:bx,y:y-32,width:150,height:34,color:zeb,borderColor:lin,borderWidth:.6});
+    page.drawText(pdfSafe(a),{x:bx+8,y:y-15,size:13,font:B,color:b2.startsWith('exced')&&exc?red:ink});page.drawText(pdfSafe(b2),{x:bx+8,y:y-27,size:7.5,font:F,color:mut});bx+=158}
+  y-=46;tableHead();
+  rows.forEach((v,i)=>{if(y<M+30){head();tableHead()}
+    if(i%2)page.drawRectangle({x:M,y:y-12,width:W-2*M,height:14,color:zeb});
+    let x=M;for(const c of cols){const t=c[2](v),isX=c[0]==='Excedió';
+      page.drawText(fit(t,isX&&t==='Sí'?B:F,7.5,c[1]-6),{x:x+3,y:y-8,size:7.5,font:isX&&t==='Sí'?B:F,color:isX&&t==='Sí'?red:(t==='Adentro'?grn:ink)});x+=c[1]}
+    y-=14});
+  const pages=doc.getPages(),n=pages.length;
+  pages.forEach((pg,i)=>{pg.drawLine({start:{x:M,y:M-6},end:{x:W-M,y:M-6},thickness:.6,color:lin});
+    pg.drawText(pdfSafe('Control de Espacios Confinados · Creado por CarlosR3 · Documento generado por la aplicación'),{x:M,y:M-18,size:7,font:F,color:mut});
+    const t='Página '+(i+1)+' de '+n;pg.drawText(pdfSafe(t),{x:W-M-F.widthOfTextAtSize(pdfSafe(t),7),y:M-18,size:7,font:F,color:mut})});
+  const bytes=await doc.save();
+  return new File([bytes],o.fname,{type:'application/pdf'});
+}
+function jobInfo(j,k,rows){if(!j)return {title:k?'Reparación: '+((rows[0]&&rows[0].jobName)||'eliminada'):'Entradas sin reparación',lines:[k?'':'Entradas en áreas que no tenían una reparación activa.']};
+  const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid),st=p&&L.sites.get(p.site);
+  return {title:'Reparación: '+j.name,lines:['Planta / área: '+[st&&st.name,p?p.name:j.pName].filter(Boolean).join(' · '),'Fechas: '+jobDates(j)+(j.status==='closed'?' · Cerrada el '+fmtD(j.closedAt||Date.now()):jobExpired(j)?' · VENCIDA':'')]}}
+async function jobPdf(j,k,rows){const name=j?j.name:(rows[0]&&rows[0].jobName)||'sin-reparacion',info=jobInfo(j,k,rows);
+  return pdfFor(rows,{...info,job:true,fname:'bitacora-reparacion-'+slug(name)+'-'+dayKey(Date.now())+'.pdf'})}
+async function viewPdf(){const d=$('#logDate').value,what=d?'del '+fmtD(new Date(d+'T12:00').getTime()):'completa';
+  return {f:await pdfFor(logRows(),{title:'Bitácora '+what,lines:[d?'Día: '+fmtD(new Date(d+'T12:00').getTime()):'Todos los registros guardados'],fname:'bitacora-espacios-confinados-'+(d||'completa-'+dayKey(Date.now()))+'.pdf'}),what}}
+const pdfFail=()=>toast('No se pudo crear el PDF. Abre la app una vez con internet para que descargue lo necesario y vuelve a intentar.');
 function tick(){
   const now=Date.now();
   $('#clock').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'})+' · '+fmtT(now);
@@ -1049,24 +1170,35 @@ function qrCanvas(text,size){
   for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+4)*cell,(r+4)*cell,cell,cell);
   return c}
 function labelCanvas(w){
-  const W=640,H=820,c=document.createElement('canvas'),x=c.getContext('2d');c.width=W;c.height=H;
+  const W=640,H=920,c=document.createElement('canvas'),x=c.getContext('2d');c.width=W;c.height=H;
   x.fillStyle='#fff';x.fillRect(0,0,W,H);
   x.save();x.beginPath();x.rect(0,0,W,48);x.clip();x.fillStyle='#FFC400';x.fillRect(0,0,W,48);x.fillStyle='#26282C';
   for(let i=-60;i<W+60;i+=56){x.beginPath();x.moveTo(i,48);x.lineTo(i+28,48);x.lineTo(i+76,0);x.lineTo(i+48,0);x.fill()}x.restore();
-  let tx0=W/2;x.fillStyle='#26282C';
-  x.textAlign='center';
-  x.font='700 32px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('ESPACIO CONFINADO · PERSONAL AUTORIZADO',tx0,94,W-(tx0-W/2)*2-40);
+  x.fillStyle='#26282C';x.textAlign='center';
+  x.font='700 32px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('ESPACIO CONFINADO · PERSONAL AUTORIZADO',W/2,94,W-40);
   const q=qrCanvas('EC1:'+w.id,500);x.imageSmoothingEnabled=false;x.drawImage(q,70,116,500,500);
   x.font='700 52px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText(String(w.name).toUpperCase(),W/2,676,W-40);
-  x.font='500 28px "Barlow",Arial,sans-serif';x.fillText([w.role,w.type==='C'?'CONTRATISTA'+(w.company?' '+w.company:''):w.type==='P'?'PERSONAL PROPIO':''].filter(Boolean).join(' · '),W/2,720,W-40);
+  x.font='500 28px "Barlow",Arial,sans-serif';x.fillText([w.role,w.type==='C'?(w.company||'CONTRATISTA'):w.type==='P'?'PERSONAL PROPIO':''].filter(Boolean).join(' · '),W/2,720,W-40);
   x.font='700 40px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('CLAVE '+w.id+(w.blood?'   ·   SANGRE '+w.blood:''),W/2,780,W-40);
+  // banda de especialidad + P/C
+  x.fillStyle=specColor(w.spec);x.fillRect(0,808,W,112);
+  const t=w.type==='C'?'C':w.type==='P'?'P':'';
+  if(t){x.fillStyle=t==='P'?'#FFC400':'#26282C';x.fillRect(W-128,824,104,80);x.fillStyle=t==='P'?'#26282C':'#FFFFFF';x.font='700 76px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText(t,W-76,893)}
+  x.fillStyle='#FFFFFF';x.textAlign='left';x.font='700 58px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText(specLabel(w.spec).toUpperCase(),28,884,t?W-180:W-56);
   return c}
-
+async function labelsPdf(list,fname){
+  const {PDFDocument,rgb}=await ensurePdfLib();const doc=await PDFDocument.create();doc.setTitle(fname);
+  const PW=612,PH=792,lw=250,lh=lw*920/640,gx=(PW-2*lw)/3,gy=(PH-2*lh)/3;let page;
+  for(let i=0;i<list.length;i++){if(i%4===0)page=doc.addPage([PW,PH]);
+    const blob=await new Promise(r=>labelCanvas(list[i]).toBlob(r,'image/png')),img=await doc.embedPng(await blob.arrayBuffer());
+    const col=i%2,row=Math.floor(i%4/2),X=gx+col*(lw+gx),Y=PH-gy-(row+1)*lh-row*gy;
+    page.drawImage(img,{x:X,y:Y,width:lw,height:lh});page.drawRectangle({x:X,y:Y,width:lw,height:lh,borderColor:rgb(.6,.6,.6),borderWidth:.5,borderDashArray:[3,3]})}
+  return new File([await doc.save()],fname,{type:'application/pdf'})}
 /* ---------- personal ---------- */
 function openForm(w){
   editingW=w||null;pendingPhoto=w?w.photo||null:null;
   $('#wFormTitle').textContent=w?'Editar datos':'Nueva persona';
-  $('#wName').value=w?w.name:'';$('#wCo').value=w?w.company||'':'';$('#wRole').value=w?w.role||'':'';
+  $('#wName').value=w?w.name:'';$('#wCo').value=w?w.company||'':'';$('#wRole').value=w?w.role||'':'';$('#wSpec').value=w?w.spec||'':'';
   $('#wBlood').value=w?w.blood||'':'';$('#wCert').value=w?w.cert||'':'';
   wTypeSel=w&&(w.type==='P'||w.type==='C')?w.type:'';renderType();$('#wIsSup').checked=!!(w&&w.isSup);
   const sups=workers().filter(x=>x.isSup&&(!w||x.id!==w.id));
@@ -1109,7 +1241,7 @@ $('#wForm').addEventListener('submit',async e=>{e.preventDefault();
   const name=$('#wName').value.trim();if(!name)return;
   if(!wTypeSel){toast('Elige si la persona es P (propia) o C (contratista).');return}
   const id=editingW?editingW.id:newId();
-  const data={...(editingW||{}),name,type:wTypeSel,company:wTypeSel==='C'?$('#wCo').value.trim():'',isSup:$('#wIsSup').checked,sup:$('#wSup').value,supName:$('#wSup').value?(L.workers.get($('#wSup').value)||{}).name||'':'',role:$('#wRole').value.trim(),blood:$('#wBlood').value,cert:$('#wCert').value,photo:pendingPhoto||'',createdAt:editingW?editingW.createdAt||Date.now():Date.now()};
+  const data={...(editingW||{}),name,type:wTypeSel,company:wTypeSel==='C'?$('#wCo').value.trim():'',isSup:$('#wIsSup').checked,sup:$('#wSup').value,supName:$('#wSup').value?(L.workers.get($('#wSup').value)||{}).name||'':'',role:$('#wRole').value.trim(),spec:$('#wSpec').value.trim(),blood:$('#wBlood').value,cert:$('#wCert').value,photo:pendingPhoto||'',createdAt:editingW?editingW.createdAt||Date.now():Date.now()};
   delete data.id;
   try{await put('workers',id,data);$('#dlgForm').close();toast(editingW?'Datos actualizados':'Persona registrada. Ya tiene su código QR.');if(!editingW)openWorker(id)}catch(x){}});
 
@@ -1163,11 +1295,13 @@ function openJob(){const ps=plants();if(!ps.length){toast('Primero agrega un ár
   $('#jName').value='';const tk=dayKey(Date.now());$('#jStart').value=tk;$('#jEnd').value=plusDays(tk,7);$('#jPlant').innerHTML=ps.map(p=>{const x=L.sites.get(p.site);return `<option value="${esc(p.id)}">${esc((x?x.name+' › ':'')+p.code+' · '+p.name+(jobForPlant(p.id)?' (ya tiene reparación)':''))}</option>`}).join('');
   if(ps.some(p=>p.id===selPlant))$('#jPlant').value=selPlant;$('#dlgJob').showModal()}
 let extJob=null;
-function openExt(j){extJob=j;$('#xInfo').textContent=j.name+(j.end?' · termina el '+fmtDay(j.end):' · sin fecha de terminación');
+const jobStart=j=>j.start||(j.createdAt?dayKey(j.createdAt):'');
+function openExt(j){extJob=j;$('#xInfo').textContent=j.name+(j.end?' · termina el '+fmtDay(j.end):' · sin fecha de terminación');$('#xStart').value=jobStart(j);
   const base=j.end&&j.end>dayKey(Date.now())?j.end:dayKey(Date.now());$('#xEnd').value=plusDays(base,7);$('#xEnd').min=dayKey(Date.now());$('#dlgExt').showModal()}
-$('#xForm').addEventListener('submit',async e=>{e.preventDefault();const v=$('#xEnd').value;if(!extJob||!v)return;
-  if(v<dayKey(Date.now())){toast('Elige una fecha de hoy en adelante.');return}
-  try{await patch('jobs',extJob.id,{end:v,status:'open'});$('#dlgExt').close();toast('Reparación extendida hasta el '+fmtDay(v)+'.')}catch(x){}});
+$('#xForm').addEventListener('submit',async e=>{e.preventDefault();const v=$('#xEnd').value,st=$('#xStart').value;if(!extJob||!v||!st)return;
+  if(v<dayKey(Date.now())){toast('La fecha de terminación debe ser de hoy en adelante.');return}
+  if(v<st){toast('La fecha de terminación no puede ser antes de la de inicio.');return}
+  try{await patch('jobs',extJob.id,{start:st,end:v,status:'open'});$('#dlgExt').close();toast('Fechas guardadas: del '+fmtDay(st)+' al '+fmtDay(v)+'.')}catch(x){}});
 $('#jForm').addEventListener('submit',async e=>{e.preventDefault();
   const name=$('#jName').value.trim(),p=L.plants.get($('#jPlant').value),start=$('#jStart').value,end=$('#jEnd').value;if(!name||!p||!start||!end)return;
   if(end<start){toast('La fecha de terminación no puede ser antes de la de inicio.');return}
@@ -1244,6 +1378,13 @@ const ACT={
   newWorker(){openForm(null)},openWorker(b){openWorker(b.dataset.id)},editWorker(b){openForm(L.workers.get(b.dataset.id))},
   async delWorker(b){const id=b.dataset.id;if(openVisits().some(v=>v.w===id)){toast('Está adentro. Registra su salida antes de eliminar.');return}
     try{await del('workers',id);$('#dlgWorker').close();toast('Persona eliminada. Su historial queda en la bitácora.')}catch(e){}},
+  pfType(b){pfType=b.dataset.t;renderCards()},
+  pfSpec(b){pfSpec=b.dataset.k;renderCards()},
+  async printLabels(b){const t=b.dataset.t,k=b.dataset.k,co=b.dataset.co;
+    const list=workers().filter(w=>(t==='x'?!(w.type==='P'||w.type==='C'):w.type===t)&&specKey(w.spec)===k&&(co==null||(String(w.company||'').trim()||'Sin nombre de contratista')===co));
+    if(!list.length)return;toast('Preparando '+list.length+' etiqueta(s)…');
+    const name='etiquetas-'+slug([t==='P'?'propio':t==='C'?'contratista':'sin-tipo',co||'',specLabel(list[0].spec)].filter(Boolean).join(' '))+'.pdf';
+    try{const f=await labelsPdf(list,name);shareFile(f,'Etiquetas QR · '+specLabel(list[0].spec),list.length+' etiquetas QR para casco, 4 por hoja.')}catch(e){pdfFail()}},
   async saveLabel(b){const w=L.workers.get(b.dataset.id);if(!w)return;
     labelCanvas(w).toBlob(async blob=>{try{await downloads.save({filename:'etiqueta-'+w.id+'.png',data:blob});toast('Etiqueta guardada')}catch(e){toast('No se pudo guardar. Mantén presionada la imagen para guardarla.')}},'image/png')},
   syncOpen(){renderSyncDlg();$('#dlgSync').showModal()},
@@ -1259,27 +1400,29 @@ const ACT={
     const pid=j.plant||plantOfZone(j.z),inside=openVisits().filter(v=>v.job===j.id||visitPlant(v)===pid);
     if(inside.length){toast('Aún hay '+inside.length+' persona(s) adentro de esta área. Registra su salida antes de cerrar la reparación.');return}
     const rows=visits().filter(v=>v.job===j.id);
-    if(rows.length)shareFile(jobFile(j,j.id,rows),'Bitácora de la reparación '+j.name,'Bitácora de la reparación '+j.name+' ('+jobDates(j)+'): '+rows.length+' registros. Se abre en Excel.');
-    (async()=>{try{for(const c of crewOf(j.id))await del('crew',c.id);await patch('jobs',j.id,{status:'closed',closedAt:Date.now()});toast('Reparación "'+j.name+'" cerrada.'+(rows.length?'':' No tenía registros que enviar.'))}catch(e){}})()},
+    (async()=>{try{for(const c of crewOf(j.id))await del('crew',c.id);await patch('jobs',j.id,{status:'closed',closedAt:Date.now()});toast('Reparación "'+j.name+'" cerrada.'+(rows.length?'':' No tenía registros que enviar.'))}catch(e){}
+      if(rows.length)try{const f=await jobPdf(L.jobs.get(j.id)||j,j.id,rows);shareFile(f,'Bitácora de la reparación '+j.name,'Bitácora de la reparación '+j.name+' ('+jobDates(j)+'): '+rows.length+' registros, en PDF.')}catch(e){pdfFail()}})()},
   sendJobLog(b){const k=b.dataset.id||'',j=L.jobs.get(k),rows=(k&&j&&j.status==='closed'?visits():logRows()).filter(v=>(v.job||'')===k);
     if(!rows.length){toast('Esta reparación no tiene registros.');return}
-    shareFile(jobFile(j,k,rows),'Bitácora '+(j?'de la reparación '+j.name:'sin reparación'),'Bitácora '+(j?'de la reparación '+j.name+' ('+jobDates(j)+')':'sin reparación')+': '+rows.length+' registros. Se abre en Excel.')},
+    toast('Preparando PDF…');jobPdf(j,k,rows).then(f=>shareFile(f,'Bitácora '+(j?'de la reparación '+j.name:'sin reparación'),'Bitácora '+(j?'de la reparación '+j.name+' ('+jobDates(j)+')':'sin reparación')+': '+rows.length+' registros, en PDF.'),pdfFail)},
   today(){$('#logDate').value=dayKey(Date.now());renderLog()},
   allDays(){$('#logDate').value='';renderLog()},
+  async pdfSave(){if(!logRows().length){toast('No hay registros en esta vista.');return}
+    try{const {f}=await viewPdf();await downloads.save({filename:f.name,data:f});toast('Bitácora guardada en PDF.')}catch(e){pdfFail()}},
   async csv(){const f=csvFile();try{await downloads.save({filename:f.name,data:f})}catch(e){toast('No se pudo guardar el archivo.')}},
+  shareNow(){const s=pendingShare;if(!s)return;$('#dlgShare').close();navigator.share({files:[s.f],title:s.title,text:s.text}).catch(e=>{if(e&&e.name!=='AbortError')toast('No se pudo abrir el menú para compartir.')})},
+  async saveShared(){const s=pendingShare;if(!s)return;$('#dlgShare').close();try{await downloads.save({filename:s.f.name,data:s.f});toast('Bitácora guardada en PDF.')}catch(e){}},
   async sendLog(){
     const rows=logRows();if(!rows.length){toast('No hay registros que enviar en esta vista.');return}
-    const f=csvFile(),d=$('#logDate').value,what=d?'del '+fmtD(new Date(d+'T12:00').getTime()):'completa';
-    const data={files:[f],title:'Bitácora de espacios confinados '+what,text:'Bitácora de espacios confinados '+what+' ('+rows.length+' registros). Se abre en Excel.'};
-    if(navigator.canShare&&navigator.canShare({files:[f]})){
-      try{await navigator.share(data)}catch(e){if(e&&e.name!=='AbortError')toast('No se pudo abrir el menú para compartir.')}
-    }else{try{await downloads.save({filename:f.name,data:f})}catch(e){}toast('Este dispositivo no permite compartir archivos. Se descargó la bitácora; adjúntala en tu correo.')}
+    toast('Preparando PDF…');
+    try{const {f,what}=await viewPdf();shareFile(f,'Bitácora de espacios confinados '+what,'Bitácora de espacios confinados '+what+' ('+rows.length+' registros), en PDF.')}catch(e){pdfFail()}
   }
 };
 $('#flash').addEventListener('click',hideFlash);
 document.addEventListener('click',e=>{
   const n=e.target.closest('nav button');if(n){setView(n.dataset.view);return}
   const b=e.target.closest('[data-act]');if(!b||!ACT[b.dataset.act])return;
+  if(b.closest('summary'))e.preventDefault();
   if(!armed(b))return;ACT[b.dataset.act](b)});
 document.addEventListener('change',async e=>{const s=e.target.closest('[data-reg]');if(!s)return;
   const v=L.visits.get(s.dataset.reg);if(!v)return;try{await patch('visits',v.id,{lim:+s.value,ack:0});toast('Régimen de '+v.wName+': '+regName(+s.value))}catch(x){}});
@@ -1291,6 +1434,11 @@ $('#cam').addEventListener('change',async e=>{const f=e.target.files[0];e.target
       else showResult({kind:'err',title:'No se leyó el código',msg:'No se encontró un código QR en la foto. Acércate al casco, evita reflejos y vuelve a intentar.'})}
   catch(x){showResult({kind:'err',msg:'No se pudo leer la foto.'})}});
 $('#logDate').addEventListener('change',renderLog);
+// Acordeón: al abrir una especialidad se cierran las demás
+$('#cards').addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.specgrp'))return;
+  if(d.open){if(!pfQ){pfOpen=d.dataset.g;document.querySelectorAll('#cards details.specgrp[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}}
+  else if(pfOpen===d.dataset.g)pfOpen=''},true);
+let pfT;$('#pSearch').addEventListener('input',e=>{clearTimeout(pfT);pfT=setTimeout(()=>{pfQ=e.target.value;renderCards()},150)});
 let coPending='';
 $('#coFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f||!coPending)return;
   try{const img=await loadImg(f),c=draw(img,240);let url=c.toDataURL('image/png');if(url.length>180000)url=c.toDataURL('image/jpeg',.85);
@@ -1393,6 +1541,7 @@ addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
   try{idb=await openDB();await loadAll()}catch(e){idb=null;$('#bLocal').hidden=false}
   ready=true;renderAll();
   syncInit();
+  setTimeout(()=>{if(navigator.onLine!==false)ensurePdfLib().catch(()=>{})},4000);
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

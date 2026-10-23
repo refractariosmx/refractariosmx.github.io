@@ -1,10 +1,11 @@
 // Guarda la app en la tablet para que abra sin internet.
 // Al publicar una versión nueva, cambia el número de CACHE.
-const CACHE = 'espacios-confinados-v18';
+const CACHE = 'espacios-confinados-v22';
 const CORE = [
   './', 'index.html', 'config-sync.js', 'manifest.webmanifest', 'logo.png', 'icon-192.png', 'icon-512.png',
   'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+  'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',

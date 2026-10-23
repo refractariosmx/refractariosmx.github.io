@@ -271,6 +271,19 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 @media (max-width:420px){.jobs{grid-template-columns:minmax(0,1fr)}}
 .job{background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--zc,#475569);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .job h3{overflow-wrap:anywhere}
+.job.expired{border-color:var(--danger);box-shadow:0 0 0 2px var(--danger)}
+.job.closed{border-top-color:var(--line);opacity:.92}
+.jobdates{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px;font-weight:600}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.jsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.jsum div{padding:8px 10px;border-radius:10px;background:var(--surface-2)}
+.jsum b{display:block;font-family:var(--display);font-size:1.6rem;line-height:1}
+.jsum span{font-size:.8rem;color:var(--muted)}
+.jlog{display:flex;flex-direction:column;gap:14px}
+.jgroup{display:flex;flex-direction:column;gap:12px}
+.jgroup>header{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-start;justify-content:space-between}
+.jgroup details summary{cursor:pointer;font-weight:600;padding:6px 0}
+.jgroup .tablewrap{margin-top:6px}
 .crew{display:flex;flex-direction:column;gap:8px}
 .mem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
 .mem b{display:block;overflow-wrap:anywhere}
@@ -412,6 +425,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <div class="step">
           <span class="label"><b>5.</b> Descanso al salir</span>
           <div class="chips" id="restChips"></div>
+          <span class="hint">Se ajusta solo al elegir el régimen: 45 → 15, 30 → 30, 15 → 45, Prueba 5 → 2. Puedes cambiarlo si lo necesitas.</span>
         </div>
       </div>
       <div class="scanside">
@@ -439,7 +453,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <h2>Reparaciones activas</h2>
       <button type="button" class="btn primary" data-act="newJob">Nueva reparación</button>
     </div>
-    <p class="muted">Una reparación es de un área completa: quien escanee su entrada en cualquiera de sus espacios confinados queda activo en ella. Al terminar el trabajo, elimínala.</p>
+    <p class="muted">Una reparación es de un área completa: quien escanee su entrada en cualquiera de sus espacios confinados queda activo en ella. Cada reparación tiene fecha de inicio y de terminación; al terminar, ciérrala y se envía su bitácora.</p>
     <div class="jobs" id="jobs"></div>
   </section>
 
@@ -476,7 +490,8 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <input type="file" accept="application/json,.json" id="restoreFile" class="sr" tabindex="-1">
       </div>
     </div>
-    <div class="panel tablewrap" id="log"></div>
+    <div class="chips" id="logModes"><button type="button" class="chip" data-act="logMode" data-m="job">Por reparación</button><button type="button" class="chip" data-act="logMode" data-m="all">Todos los registros</button></div>
+    <div id="log"></div>
   </section>
 </main>
 
@@ -567,10 +582,27 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
     <h2>Nueva reparación</h2>
     <div class="field"><label class="label" for="jName">Nombre de la reparación</label><input id="jName" required maxlength="80" placeholder="Ej. Cambio de ladrillo refractario"></div>
     <div class="field"><label class="label" for="jPlant">Área</label><select id="jPlant" required></select></div>
+    <div class="grid2">
+      <div class="field"><label class="label" for="jStart">Fecha de inicio</label><input type="date" id="jStart" required></div>
+      <div class="field"><label class="label" for="jEnd">Fecha de terminación</label><input type="date" id="jEnd" required></div>
+    </div>
+    <p class="muted">Al llegar la fecha de terminación la app avisa que la reparación venció y pide <b>extenderla</b> o <b>cerrarla</b>. Al cerrarla se envía su bitácora.</p>
     <p class="muted">Quien escanee su entrada en cualquier espacio confinado de esa área aparecerá como activo en esta reparación.</p>
     <div class="acts">
       <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
       <button type="submit" class="btn primary">Crear reparación</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgExt">
+  <form class="dlg" id="xForm">
+    <h2>Extender reparación</h2>
+    <p id="xInfo" class="muted"></p>
+    <div class="field"><label class="label" for="xEnd">Nueva fecha de terminación</label><input type="date" id="xEnd" required></div>
+    <div class="acts">
+      <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
+      <button type="submit" class="btn primary">Extender</button>
     </div>
   </form>
 </dialog>
@@ -590,8 +622,10 @@ const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
 const COLS=['workers','zones','visits','config','jobs','crew','plants','sites','companies'];
 const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
-const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min']];
-const RESTS=[[0,'Sin descanso'],[15,'15 min'],[30,'30 min'],[45,'45 min']];
+const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min'],[5,'Prueba 5 min']];
+const RESTS=[[0,'Sin límite'],[15,'15 min'],[30,'30 min'],[45,'45 min'],[2,'Prueba 2 min']];
+// Descanso que se elige solo al tocar un régimen de trabajo
+const PAIR={0:0,45:15,30:30,15:45,5:2};
 const ZCOLORS=['#2563EB','#7C3AED','#0D9488','#DB2777','#9A3412','#475569','#15803D','#B45309','#0369A1','#BE123C','#4D7C0F','#A21CAF','#1E3A8A','#065F46','#7F1D1D','#92400E'];
 // Texto blanco o negro según qué tan claro sea el color de la planta
 function inkFor(hex){const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return '#FFFFFF';const n=parseInt(m[1],16),c=[n>>16,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]>.36?'#1E2023':'#FFFFFF'}
@@ -616,7 +650,13 @@ const areasOf=sid=>plants().filter(p=>p.site===sid);
 const siteOfPlant=pid=>{const p=L.plants.get(pid);return p?p.site:''};
 const visits=()=>[...L.visits.values()].sort((a,b)=>b.in-a.in);
 const openVisits=()=>visits().filter(v=>v.open).sort((a,b)=>a.in-b.in);
-const jobs=()=>[...L.jobs.values()].sort((a,b)=>b.createdAt-a.createdAt);
+const allJobs=()=>[...L.jobs.values()].sort((a,b)=>b.createdAt-a.createdAt);
+const jobs=()=>allJobs().filter(j=>j.status!=='closed');
+const closedJobs=()=>allJobs().filter(j=>j.status==='closed').sort((a,b)=>(b.closedAt||0)-(a.closedAt||0));
+const jobExpired=j=>!!(j&&j.status!=='closed'&&j.end&&j.end<dayKey(Date.now()));
+const fmtDay=k=>k?fmtD(new Date(k+'T12:00').getTime()):'';
+const daysLeft=j=>j.end?Math.round((new Date(j.end+'T12:00')-new Date(dayKey(Date.now())+'T12:00'))/864e5):null;
+const plusDays=(k,n)=>dayKey(new Date(k+'T12:00').getTime()+n*864e5);
 const plantOfZone=zid=>{const z=L.zones.get(zid);return z?z.plant:''};
 const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid):null;
 const crewOf=jid=>[...L.crew.values()].filter(c=>c.job===jid).sort((a,b)=>a.at-b.at);
@@ -694,7 +734,7 @@ function dur(ms){const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=
 function status(since,limMin){if(!limMin)return 'ok';const f=(Date.now()-since)/(limMin*60000);return f>=1?'over':f>=.8?'warn':'ok'}
 const pct=(since,limMin)=>limMin?clamp((Date.now()-since)/(limMin*60000)*100,0,100):0;
 const ST={ok:'Dentro del tiempo',warn:'Cerca del límite',over:'Tiempo excedido'};
-const regName=m=>m?m+' min':'Sin límite';
+const regName=m=>m===5?'Prueba 5 min':m?m+' min':'Sin límite';
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3800)}
 let ac;function tone(steps){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();
   const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);let t=ac.currentTime;g.gain.setValueAtTime(.0001,t);
@@ -736,7 +776,7 @@ async function toggle(w,via){
   await put('visits',uid('v'),v);
   if(j)await addToJob(j,w);
   beep(true);
-  return {kind:'in',w,v,t:now,lim,job:j,warn:[restWarn,w.cert?'':'Sin fecha de capacitación de espacios confinados registrada. Verifícala.'].filter(Boolean).join(' ')};
+  return {kind:'in',w,v,t:now,lim,job:j,warn:[restWarn,jobExpired(j)?'La reparación '+j.name+' venció el '+fmtDay(j.end)+'. Extiéndela o ciérrala.':'',w.cert?'':'Sin fecha de capacitación de espacios confinados registrada. Verifícala.'].filter(Boolean).join(' ')};
 }
 async function handleCode(code,via){
   code=String(code).trim();if(!code)return;
@@ -789,8 +829,9 @@ function alertsNow(){
   const rank={over:0,rest:1,warn:2};return out.sort((a,b)=>rank[a.st]-rank[b.st]||a.v.in-b.v.in);
 }
 function renderAlerts(){
-  const el=$('#alerts'),as=alertsNow();el.hidden=!as.length;
-  el.innerHTML=as.map(a=>a.type==='rest'
+  const el=$('#alerts'),as=alertsNow(),xj=jobs().filter(jobExpired);el.hidden=!as.length&&!xj.length;
+  el.innerHTML=xj.map(j=>`<div class="alertrow" data-st="over" style="animation:none"><div><b class="kind">REPARACIÓN VENCIDA</b><span class="what">${esc(j.name)} · ${esc(j.pName||'')} · terminaba el ${fmtDay(j.end)}. ¿La extiendes o la cierras?</span></div>
+    <div class="tools"><button type="button" class="btn" data-act="extendJob" data-id="${esc(j.id)}">Extender</button><button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}" data-confirm>Cerrar y enviar</button></div></div>`).join('')+as.map(a=>a.type==='rest'
     ?`<div class="alertrow" data-st="rest"><div><b class="kind">DESCANSO TERMINADO</b><span class="what">${esc(a.v.wName)} ya puede volver a entrar (descansó ${a.v.restMin} min, salió de ${esc(placeText(a.v))}).</span></div>
        <button type="button" class="btn" data-act="restAck" data-id="${esc(a.v.id)}">Enterado</button></div>`
     :`<div class="alertrow ${a.v.ack?'acked':''}" data-st="${a.st}" data-since="${a.v.in}" data-limit="${a.lim}" data-fixed="1">
@@ -806,7 +847,8 @@ function notify(a){
   try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,opt)).catch(()=>{});else new Notification(title,opt)}catch(e){}
 }
 function checkAlerts(){
-  const as=alertsNow(),now=Date.now(),sig=as.map(a=>a.type+a.v.id+a.st+(a.v.ack?1:0)).join('|')+'#'+restsNow().filter(v=>now>=v.restEnd).length;
+  const as=alertsNow(),now=Date.now(),xj=jobs().filter(jobExpired),sig=as.map(a=>a.type+a.v.id+a.st+(a.v.ack?1:0)).join('|')+'#'+restsNow().filter(v=>now>=v.restEnd).length+'#'+xj.map(j=>j.id).join(',');
+  for(const j of xj)if(!notified.has('job'+j.id)){notified.set('job'+j.id,1);if(ready)chime()}
   if(sig!==alertSig){alertSig=sig;renderAlerts();renderHeader();renderRests()}
   const keys=new Set(as.map(a=>a.type+a.v.id));for(const k of [...notified.keys()])if(!keys.has(k))notified.delete(k);
   for(const a of as){const k=a.type+a.v.id;if(notified.get(k)!==a.st){notified.set(k,a.st);if(ready){notify(a);if(a.st==='warn')tone([[700,.15],[0,.08],[700,.15]]);if(a.type==='rest'){chime();lastChime=now}}}}
@@ -893,20 +935,35 @@ function renderScanSetup(){
 }
 function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro · '+v.zName]:['in','Adentro en otra área'];
   return activeRestOf(wid)?['rest','En descanso']:['','Afuera']}
+function jobDates(j){return j.start||j.end?`${j.start?fmtDay(j.start):'—'} → ${j.end?fmtDay(j.end):'sin fecha'}`:'Sin fechas'}
+function jobPill(j){if(j.status==='closed')return '<span class="pill">Cerrada</span>';
+  if(!j.end)return '<span class="pill">Sin fecha de terminación</span>';
+  const n=daysLeft(j);if(n<0)return `<span class="pill over">VENCIDA desde el ${fmtDay(j.end)}</span>`;
+  return `<span class="pill ${n<=1?'warn':'in'}">${n===0?'Vence hoy':n===1?'Vence mañana':'Faltan '+n+' días'}</span>`}
+function jobPlace(j){const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid);return `<span class="zline">${p?pTag(p,1):''}${esc((p&&L.sites.get(p.site)?L.sites.get(p.site).name+' › ':'')+(p?p.name:j.pName||'Área eliminada'))}</span>`}
 function renderJobs(){
-  const js=jobs(),el=$('#jobs');
-  if(!js.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'No hay reparaciones activas. Toca <b>Nueva reparación</b>, elige el área y todos los que escaneen su entrada en cualquiera de sus espacios quedarán registrados en ella.':'Cargando…'}</div>`;return}
-  el.innerHTML=js.map(j=>{const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid),cr=crewOf(j.id),sp=p?spacesOf(pid).map(z=>z.name):[];
-    return `<section class="job" style="--zc:${pColorOf(p)}">
-      <div><h3>${esc(j.name)}</h3><div class="muted"><span class="zline">${p?pTag(p,1):''}${esc((p&&L.sites.get(p.site)?L.sites.get(p.site).name+' › ':'')+(p?p.name:j.pName||'Área eliminada'))}</span> · desde ${fmtD(j.createdAt)} ${fmtHM(j.createdAt)}</div>
+  const js=jobs(),cl=closedJobs(),el=$('#jobs');
+  let h='';
+  if(!js.length)h=`<div class="empty panel" style="grid-column:1/-1">${ready?'No hay reparaciones activas. Toca <b>Nueva reparación</b>, elige el área y sus fechas; todos los que escaneen su entrada en esa área quedarán registrados en ella.':'Cargando…'}</div>`;
+  h+=js.map(j=>{const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid),cr=crewOf(j.id),sp=p?spacesOf(pid).map(z=>z.name):[],x=jobExpired(j);
+    return `<section class="job ${x?'expired':''}" style="--zc:${pColorOf(p)}">
+      <div><h3>${esc(j.name)}</h3><div class="muted">${jobPlace(j)}</div>
+        <div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}</div>
         ${sp.length?`<div class="muted" style="font-size:.9rem">Espacios: ${esc(sp.join(', '))}</div>`:''}</div>
+      ${x?'<div class="alert" style="background:var(--danger-soft);color:var(--danger)">Esta reparación ya venció. Extiéndela si sigue el trabajo o ciérrala para enviar su bitácora.</div>':''}
       <div class="label">${cr.length} ${cr.length===1?'persona activa':'personas activas'}</div>
       <div class="crew">${cr.length?cr.map(c=>{const w=L.workers.get(c.w)||{name:c.name},[cls,t]=memberStatus(c.w,pid);
         return `<div class="mem">${avatar(w,'s')}<div><b>${esc(w.name||c.name)}</b><span class="pill ${cls}">${esc(t)}</span></div>
           <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')
         :'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta área.</p>'}</div>
-      <button type="button" class="btn danger" data-act="delJob" data-id="${esc(j.id)}" data-confirm>Terminar y eliminar reparación</button>
+      <div class="tools"><button type="button" class="btn ${x?'primary':''}" data-act="extendJob" data-id="${esc(j.id)}">${j.end?'Extender fecha':'Poner fecha de terminación'}</button>
+        <button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}" data-confirm>Cerrar y enviar bitácora</button></div>
     </section>`}).join('');
+  if(cl.length)h+=`<div class="sitehead" style="margin-top:12px">Reparaciones cerradas</div>`+cl.map(j=>`<section class="job closed">
+      <div><h3>${esc(j.name)}</h3><div class="muted">${jobPlace(j)}</div><div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}<span class="muted">Cerrada el ${fmtD(j.closedAt||Date.now())}</span></div></div>
+      <div class="tools"><button type="button" class="btn small" data-act="sendJobLog" data-id="${esc(j.id)}">Enviar bitácora</button>
+        <button type="button" class="btn small danger" data-act="delJob" data-id="${esc(j.id)}" data-confirm>Quitar de la lista</button></div></section>`).join('');
+  el.innerHTML=h;
 }
 function renderCards(){
   const ws=workers(),ov=openVisits(),el=$('#cards');
@@ -940,20 +997,39 @@ function renderPlants(){
 function logRows(){const d=$('#logDate').value;return visits().filter(v=>!d||dayKey(v.in)===d)}
 const exceeded=v=>{const lim=visitLimit(v);return !!lim&&((v.open?Date.now():v.out)-v.in)>lim*60000};
 const plantName=v=>{const p=L.plants.get(visitPlant(v));return p?p.name:v.pName||''};
-function renderLog(){
-  const rows=logRows(),el=$('#log'),d=$('#logDate').value;
-  $('#sendBtn').textContent=d?'Enviar bitácora del '+fmtD(new Date(d+'T12:00').getTime()):'Enviar bitácora completa';
-  if(!rows.length){el.innerHTML=`<div class="empty">${ready?'No hay registros'+(d?' en ese día.':' todavía. Aparecen aquí al escanear el primer casco.'):'Cargando…'}</div>`;return}
-  el.innerHTML=`<table><thead><tr><th>Persona</th><th>Empresa</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(v=>{const lim=visitLimit(v);
-    return `<tr><td>${esc(v.wName)}</td><td>${typeBadge(typeOf(v),'s')} ${esc(v.wCo||'')}</td><td>${esc(siteName(v))}</td><td>${zLabel(v.z,v.zName,visitPlant(v),v.pName)}</td><td>${esc(v.jobName||'')}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
+let logMode=ls('ec.logmode')||'job';
+function rowHtml(v){const lim=visitLimit(v);
+  return `<tr><td>${esc(v.wName)}</td><td>${typeBadge(typeOf(v),'s')} ${esc(v.wCo||'')}</td><td>${esc(siteName(v))}</td><td>${zLabel(v.z,v.zName,visitPlant(v),v.pName)}</td><td>${esc(v.jobName||'')}</td><td>${fmtD(v.in)}</td><td class="num">${fmtT(v.in)}</td>
      <td class="num">${v.open?'':fmtT(v.out)}</td><td class="num">${v.open?'':dur(v.out-v.in)}</td><td>${regName(lim)}</td>
      <td>${exceeded(v)?'<span class="pill over">Excedió</span>':v.open?'<span class="pill in">Adentro</span>':'En tiempo'}</td>
      <td>${v.restMin?v.restMin+' min':''}</td>
-     <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td></tr>`}).join('')}</tbody></table>`;
+     <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td></tr>`}
+const tableHtml=rows=>`<table><thead><tr><th>Persona</th><th>Empresa</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
+function jobGroups(rows){const g=new Map();
+  for(const v of rows){const k=v.job||'';if(!g.has(k))g.set(k,[]);g.get(k).push(v)}
+  return [...g.entries()].map(([k,vs])=>({k,vs,j:L.jobs.get(k)})).sort((a,b)=>(a.k?0:1)-(b.k?0:1)||((a.j&&a.j.status!=='closed')?0:1)-((b.j&&b.j.status!=='closed')?0:1)||b.vs[0].in-a.vs[0].in)}
+function renderLog(){
+  const rows=logRows(),el=$('#log'),d=$('#logDate').value;
+  $('#sendBtn').textContent=d?'Enviar bitácora del '+fmtD(new Date(d+'T12:00').getTime()):'Enviar bitácora completa';
+  document.querySelectorAll('#logModes .chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===logMode));
+  if(!rows.length){el.innerHTML=`<div class="empty panel">${ready?'No hay registros'+(d?' en ese día.':' todavía. Aparecen aquí al escanear el primer casco.'):'Cargando…'}</div>`;return}
+  if(logMode==='all'){el.innerHTML=`<div class="panel tablewrap">${tableHtml(rows)}</div>`;return}
+  el.innerHTML=`<div class="jlog">${jobGroups(rows).map(({k,vs,j})=>{
+    const ppl=new Set(vs.map(v=>v.w)).size,tot=vs.reduce((a,v)=>a+((v.open?Date.now():v.out)-v.in),0),exc=vs.filter(exceeded).length,ins=vs.filter(v=>v.open).length;
+    return `<section class="panel jgroup"><header><div><h3>${esc(j?j.name:k?(vs[0].jobName||'Reparación eliminada'):'Sin reparación')}</h3>
+        ${j?`<div class="muted">${jobPlace(j)}</div><div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}</div>`:k?'':'<div class="muted">Entradas en áreas que no tenían una reparación activa.</div>'}</div>
+        <button type="button" class="btn small primary" data-act="sendJobLog" data-id="${esc(k)}">Enviar bitácora</button></header>
+      <div class="jsum"><div><b class="num">${ppl}</b><span>personas</span></div><div><b class="num">${vs.length}</b><span>ingresos</span></div><div><b class="num">${dur(tot)}</b><span>tiempo total adentro</span></div><div><b class="num" style="${exc?'color:var(--danger)':''}">${exc}</b><span>excedieron su tiempo</span></div>${ins?`<div><b class="num" style="color:var(--safe)">${ins}</b><span>adentro ahora</span></div>`:''}</div>
+      <details><summary>Ver los ${vs.length} registros</summary><div class="tablewrap">${tableHtml(vs)}</div></details></section>`}).join('')}</div>`;
 }
-function csvFile(){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"',d=$('#logDate').value;
-  const rows=[['Persona','Tipo','Contratista','Supervisor','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(logRows().map(v=>[v.wName,typeName(typeOf(v)),v.wCo||'',v.supName||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
-  return new File(['﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n')],'bitacora-espacios-confinados-'+(d||'completa-'+dayKey(Date.now()))+'.csv',{type:'text/csv'})}
+function csvFor(rows,fname){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+  const out=[['Persona','Tipo','Contratista','Supervisor','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(rows.map(v=>[v.wName,typeName(typeOf(v)),v.wCo||'',v.supName||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
+  return new File(['﻿'+out.map(r=>r.map(q).join(',')).join('\r\n')],fname,{type:'text/csv'})}
+function csvFile(){const d=$('#logDate').value;return csvFor(logRows(),'bitacora-espacios-confinados-'+(d||'completa-'+dayKey(Date.now()))+'.csv')}
+function shareFile(f,title,text){
+  if(navigator.canShare&&navigator.canShare({files:[f]}))return navigator.share({files:[f],title,text}).catch(e=>{if(e&&e.name!=='AbortError')toast('No se pudo abrir el menú para compartir.')});
+  return downloads.save({filename:f.name,data:f}).then(()=>toast('Este dispositivo no permite compartir archivos. Se descargó la bitácora; adjúntala en tu correo.'),()=>{})}
+function jobFile(j,k,rows){const name=j?j.name:(rows[0]&&rows[0].jobName)||'sin-reparacion';return csvFor(rows,'bitacora-reparacion-'+slug(name)+'-'+dayKey(Date.now())+'.csv')}
 function tick(){
   const now=Date.now();
   $('#clock').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'})+' · '+fmtT(now);
@@ -1084,11 +1160,18 @@ $('#zForm').addEventListener('submit',async e=>{e.preventDefault();
 
 /* ---------- reparaciones ---------- */
 function openJob(){const ps=plants();if(!ps.length){toast('Primero agrega un área.');return}
-  $('#jName').value='';$('#jPlant').innerHTML=ps.map(p=>{const x=L.sites.get(p.site);return `<option value="${esc(p.id)}">${esc((x?x.name+' › ':'')+p.code+' · '+p.name+(jobForPlant(p.id)?' (ya tiene reparación)':''))}</option>`}).join('');
+  $('#jName').value='';const tk=dayKey(Date.now());$('#jStart').value=tk;$('#jEnd').value=plusDays(tk,7);$('#jPlant').innerHTML=ps.map(p=>{const x=L.sites.get(p.site);return `<option value="${esc(p.id)}">${esc((x?x.name+' › ':'')+p.code+' · '+p.name+(jobForPlant(p.id)?' (ya tiene reparación)':''))}</option>`}).join('');
   if(ps.some(p=>p.id===selPlant))$('#jPlant').value=selPlant;$('#dlgJob').showModal()}
+let extJob=null;
+function openExt(j){extJob=j;$('#xInfo').textContent=j.name+(j.end?' · termina el '+fmtDay(j.end):' · sin fecha de terminación');
+  const base=j.end&&j.end>dayKey(Date.now())?j.end:dayKey(Date.now());$('#xEnd').value=plusDays(base,7);$('#xEnd').min=dayKey(Date.now());$('#dlgExt').showModal()}
+$('#xForm').addEventListener('submit',async e=>{e.preventDefault();const v=$('#xEnd').value;if(!extJob||!v)return;
+  if(v<dayKey(Date.now())){toast('Elige una fecha de hoy en adelante.');return}
+  try{await patch('jobs',extJob.id,{end:v,status:'open'});$('#dlgExt').close();toast('Reparación extendida hasta el '+fmtDay(v)+'.')}catch(x){}});
 $('#jForm').addEventListener('submit',async e=>{e.preventDefault();
-  const name=$('#jName').value.trim(),p=L.plants.get($('#jPlant').value);if(!name||!p)return;
-  try{const id=uid('j');await put('jobs',id,{name,plant:p.id,pName:p.name,createdAt:Date.now()});
+  const name=$('#jName').value.trim(),p=L.plants.get($('#jPlant').value),start=$('#jStart').value,end=$('#jEnd').value;if(!name||!p||!start||!end)return;
+  if(end<start){toast('La fecha de terminación no puede ser antes de la de inicio.');return}
+  try{const id=uid('j');await put('jobs',id,{name,plant:p.id,pName:p.name,start,end,status:'open',createdAt:Date.now()});
     for(const v of openVisits().filter(v=>visitPlant(v)===p.id))await put('crew',id+'-'+v.w,{job:id,w:v.w,name:v.wName,at:Date.now()});
     $('#dlgJob').close();toast('Reparación creada. Quien escanee su entrada en '+p.name+' quedará activo en ella.')}catch(x){}});
 
@@ -1136,7 +1219,7 @@ const ACT={
   pickSite(b){if(selSite!==b.dataset.id){selSite=b.dataset.id;selPlant='';selZone='';ls('ec.site',selSite);ls('ec.plant','');ls('ec.cp','')}renderScanSetup()},
   pickPlant(b){if(selPlant!==b.dataset.id){selPlant=b.dataset.id;selZone='';ls('ec.plant',selPlant);ls('ec.cp','')}renderScanSetup()},
   pickZone(b){selZone=b.dataset.id;ls('ec.cp',selZone);renderScanSetup()},
-  pickReg(b){selReg=+b.dataset.m;ls('ec.reg',String(selReg));renderScanSetup()},
+  pickReg(b){selReg=+b.dataset.m;ls('ec.reg',String(selReg));if(PAIR[selReg]!=null){selRest=PAIR[selReg];ls('ec.rest',String(selRest))}renderScanSetup()},
   pickRest(b){selRest=+b.dataset.m;ls('ec.rest',String(selRest));renderScanSetup()},
   pickColor(b){pColor=b.dataset.c;renderSwatches()},
   newSite(){openSite(null)},editSite(b){openSite(L.sites.get(b.dataset.id))},
@@ -1150,7 +1233,7 @@ const ACT={
     try{await del('zones',z.id);$('#dlgZone').close()}catch(e){}},
   newJob(){openJob()},
   async delJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
-    try{for(const c of crewOf(j.id))await del('crew',c.id);await del('jobs',j.id);toast('Reparación "'+j.name+'" eliminada.')}catch(e){}},
+    try{for(const c of crewOf(j.id))await del('crew',c.id);await del('jobs',j.id);toast('Reparación "'+j.name+'" quitada de la lista. Sus registros siguen en la bitácora.')}catch(e){}},
   async delCrew(b){try{await del('crew',b.dataset.id)}catch(e){}},
   async exit(b){const v=L.visits.get(b.dataset.id);if(!v||!v.open)return;
     try{const r=await closeVisit(v,'manual');toast('Salida de '+v.wName+' a las '+fmtT(r.t)+(r.rest?' · descanso '+r.rest+' min':''))}catch(e){}},
@@ -1170,6 +1253,17 @@ const ACT={
   async backup(){const d={app:'espacios-confinados',v:3,exportedAt:new Date().toISOString()};COLS.forEach(c=>d[c]=[...L[c].values()]);
     await downloads.save({filename:'respaldo-espacios-confinados-'+dayKey(Date.now())+'.json',data:JSON.stringify(d)});toast('Respaldo generado. Guárdalo fuera de la tablet.')},
   closeDlg(b){b.closest('dialog').close()},
+  logMode(b){logMode=b.dataset.m;ls('ec.logmode',logMode);renderLog()},
+  extendJob(b){const j=L.jobs.get(b.dataset.id);if(j)openExt(j)},
+  closeJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
+    const pid=j.plant||plantOfZone(j.z),inside=openVisits().filter(v=>v.job===j.id||visitPlant(v)===pid);
+    if(inside.length){toast('Aún hay '+inside.length+' persona(s) adentro de esta área. Registra su salida antes de cerrar la reparación.');return}
+    const rows=visits().filter(v=>v.job===j.id);
+    if(rows.length)shareFile(jobFile(j,j.id,rows),'Bitácora de la reparación '+j.name,'Bitácora de la reparación '+j.name+' ('+jobDates(j)+'): '+rows.length+' registros. Se abre en Excel.');
+    (async()=>{try{for(const c of crewOf(j.id))await del('crew',c.id);await patch('jobs',j.id,{status:'closed',closedAt:Date.now()});toast('Reparación "'+j.name+'" cerrada.'+(rows.length?'':' No tenía registros que enviar.'))}catch(e){}})()},
+  sendJobLog(b){const k=b.dataset.id||'',j=L.jobs.get(k),rows=(k&&j&&j.status==='closed'?visits():logRows()).filter(v=>(v.job||'')===k);
+    if(!rows.length){toast('Esta reparación no tiene registros.');return}
+    shareFile(jobFile(j,k,rows),'Bitácora '+(j?'de la reparación '+j.name:'sin reparación'),'Bitácora '+(j?'de la reparación '+j.name+' ('+jobDates(j)+')':'sin reparación')+': '+rows.length+' registros. Se abre en Excel.')},
   today(){$('#logDate').value=dayKey(Date.now());renderLog()},
   allDays(){$('#logDate').value='';renderLog()},
   async csv(){const f=csvFile();try{await downloads.save({filename:f.name,data:f})}catch(e){toast('No se pudo guardar el archivo.')}},

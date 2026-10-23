@@ -698,7 +698,9 @@ const fmtDay=k=>k?fmtD(new Date(k+'T12:00').getTime()):'';
 const daysLeft=j=>j.end?Math.round((new Date(j.end+'T12:00')-new Date(dayKey(Date.now())+'T12:00'))/864e5):null;
 const plusDays=(k,n)=>dayKey(new Date(k+'T12:00').getTime()+n*864e5);
 const plantOfZone=zid=>{const z=L.zones.get(zid);return z?z.plant:''};
-const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid):null;
+// Solo cuenta una reparación que ya empezó (fecha de inicio de hoy o antes)
+const jobStarted=j=>!!j&&(!j.start||j.start<=dayKey(Date.now()));
+const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid&&jobStarted(j)):null;
 const crewOf=jid=>[...L.crew.values()].filter(c=>c.job===jid).sort((a,b)=>a.at-b.at);
 const visitLimit=v=>v.lim!=null?+v.lim||0:(+((L.workers.get(v.w)||{}).limitMin)||+((L.zones.get(v.z)||{}).limitMin)||0);
 const visitPlant=v=>v.p||plantOfZone(v.z);
@@ -978,10 +980,11 @@ function renderScanSetup(){
   $('#regChips').innerHTML=REGS.map(([m,t])=>`<button type="button" class="chip" data-act="pickReg" data-m="${m}" aria-pressed="${selReg===m}">${t}</button>`).join('');
   $('#restChips').innerHTML=RESTS.map(([m,t])=>`<button type="button" class="chip" data-act="pickRest" data-m="${m}" aria-pressed="${selRest===m}">${t}</button>`).join('');
 }
-function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro · '+v.zName]:['in','Adentro en otra área'];
+function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro aquí · '+v.zName]:['warn','Trabajando en otra área · '+placeText(v)];
   return activeRestOf(wid)?['rest','En descanso']:['','Afuera']}
 function jobDates(j){const st=j.start||(j.createdAt?dayKey(j.createdAt):'');return `${st?fmtDay(st):'—'} → ${j.end?fmtDay(j.end):'sin fecha de terminación'}`}
 function jobPill(j){if(j.status==='closed')return '<span class="pill">Cerrada</span>';
+  if(!jobStarted(j))return `<span class="pill">Programada · inicia el ${fmtDay(j.start)}</span>`;
   if(!j.end)return '<span class="pill warn">Falta fecha de terminación</span>';
   const n=daysLeft(j);if(n<0)return `<span class="pill over">VENCIDA desde el ${fmtDay(j.end)}</span>`;
   return `<span class="pill ${n<=1?'warn':'in'}">${n===0?'Vence hoy':n===1?'Vence mañana':'Faltan '+n+' días'}</span>`}
@@ -996,7 +999,8 @@ function renderJobs(){
         <div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}</div>
         ${sp.length?`<div class="muted" style="font-size:.9rem">Espacios: ${esc(sp.join(', '))}</div>`:''}</div>
       ${x?'<div class="alert" style="background:var(--danger-soft);color:var(--danger)">Esta reparación ya venció. Extiéndela si sigue el trabajo o ciérrala para enviar su bitácora.</div>':''}
-      <div class="label">${cr.length} ${cr.length===1?'persona activa':'personas activas'}</div>
+      <div class="label">${cr.length} ${cr.length===1?'persona registrada':'personas registradas'} en esta reparación${(()=>{const n=cr.filter(c=>openVisits().some(v=>v.w===c.w&&visitPlant(v)===pid)).length;return n?' · '+n+' adentro aquí ahora':''})()}</div>
+      ${jobStarted(j)?'':'<p class="muted">Aún no empieza: las entradas en esta área no se suman hasta la fecha de inicio.</p>'}
       <div class="crew">${cr.length?cr.map(c=>{const w=L.workers.get(c.w)||{name:c.name},[cls,t]=memberStatus(c.w,pid);
         return `<div class="mem">${avatar(w,'s')}<div><b>${esc(w.name||c.name)}</b><span class="pill ${cls}">${esc(t)}</span></div>
           <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')

@@ -1,6 +1,6 @@
 {
   "name": "Control de Espacios Confinados",
-  "short_name": "Espacios Conf.",
+  "short_name": "Control EC",
   "description": "Registro de entradas y salidas a espacios confinados con QR en el casco.",
   "lang": "es-MX",
   "start_url": "./index.html",

@@ -73,6 +73,11 @@ button,input,select{font:inherit;color:inherit}
 .brand{flex:1 1 260px;min-width:0;display:flex;align-items:center;gap:12px}
 .logo{flex:none;width:52px;height:52px;border-radius:10px;background:#FFFFFF;display:grid;place-items:center;padding:6px}
 .logo img{max-height:100%;display:block}
+.logo.ec{width:64px;height:64px;padding:0;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 0 0 3px var(--yellow),0 4px 14px rgba(0,0,0,.45)}
+.logo.ec img{width:100%;height:100%;max-height:none;object-fit:cover}
+@media (max-width:420px){.logo.ec{width:56px;height:56px}}
+.logo.flag{width:62px;height:42px;padding:0;background:transparent;border-radius:6px;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.logo.flag img{width:100%;height:100%;max-height:none;object-fit:cover}
 .brand h1{font-size:1.6rem;text-transform:uppercase;letter-spacing:.04em}
 .brand h1 b{color:var(--yellow)}
 .clock{font-size:.9rem;color:var(--head-muted)}
@@ -86,7 +91,15 @@ button,input,select{font:inherit;color:inherit}
 #syncBtn[data-st="ok"]{color:var(--head-safe);border-color:var(--head-safe)}
 #syncBtn[data-st="warn"]{color:var(--head-warn);border-color:var(--head-warn)}
 #syncBtn[data-st="over"]{color:var(--head-danger);border-color:var(--head-danger)}
-nav{display:flex;gap:4px;flex:1 1 100%;overflow-x:auto;margin-top:4px}
+.navwrap{position:relative;flex:1 1 100%;min-width:0;margin-top:4px}
+nav{display:flex;gap:4px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.navarrow{position:absolute;top:0;bottom:0;z-index:2;width:44px;border:0;padding:0;cursor:pointer;font-family:var(--display);font-size:2.4rem;font-weight:700;line-height:1;color:var(--yellow);animation:nudge 1.4s ease-in-out infinite}
+.navarrow.left{left:0;background:linear-gradient(90deg,var(--head) 55%,transparent);text-align:left;padding-left:6px;animation-name:nudgeL}
+.navarrow.right{right:0;background:linear-gradient(270deg,var(--head) 55%,transparent);text-align:right;padding-right:6px}
+@keyframes nudge{50%{transform:translateX(3px)}}
+@keyframes nudgeL{50%{transform:translateX(-3px)}}
+@media (prefers-reduced-motion:reduce){.navarrow{animation:none}}
 nav button{flex:1 0 auto;min-height:50px;padding:0 16px;border:0;border-radius:10px 10px 0 0;background:transparent;font-family:var(--display);font-size:1.2rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--head-muted);cursor:pointer}
 nav button[aria-current="true"]{background:var(--yellow);color:var(--yellow-ink)}
 @media (max-width:700px),(max-height:520px){.top{position:static}}
@@ -323,9 +336,9 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 .hint{font-size:.85rem;color:var(--muted);line-height:1.4}
 .card.blocked{border-left-color:var(--danger);background:var(--danger-soft)}
 .pill.over{background:var(--danger-soft);color:var(--danger)}
-.sign{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:8px 32px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:4px 12px;color:var(--muted);font-size:.9rem;border-top:1px solid var(--line)}
-.sign .sig{font-family:"Caveat","Segoe Script","Brush Script MT",cursive;font-size:2.1rem;font-weight:700;color:var(--ink);line-height:1}
-.sign a{color:var(--ink);font-weight:600}
+.sign{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:8px 32px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:4px 10px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--line)}
+.sign .sig{font-family:"Caveat","Segoe Script","Brush Script MT",cursive;font-size:1.45rem;font-weight:700;color:var(--ink);line-height:1}
+.sign a{color:var(--ink);font-weight:600;font-size:.8rem}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--head);color:var(--head-ink);border-left:6px solid var(--yellow);padding:12px 18px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100vw - 32px);box-shadow:var(--shadow)}
 </style>
 </head>
@@ -334,7 +347,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
   <div class="stripe"></div>
   <div class="top-in">
     <div class="brand">
-      <span class="logo"><img src="logo.png" alt=""></span>
+      <span class="logo ec"><img src="logo-ec.png" alt="Logo Control de Espacios Confinados"></span>
       <div>
         <h1>Control de <b>Espacios Confinados</b></h1>
         <div class="clock num" id="clock"></div>
@@ -344,14 +357,18 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
     <div class="count" id="count" data-st="zero"><b class="num" id="countN">0</b><span id="countT">personas adentro</span></div>
     <button type="button" class="btn small" data-act="syncOpen" id="syncBtn" hidden>Sincronización</button>
     <button type="button" class="btn small" data-act="install" id="installBtn" hidden>Instalar app</button>
-    <nav aria-label="Secciones">
-      <button type="button" data-view="adentro" aria-current="true">Adentro</button>
+    <div class="navwrap" id="navwrap">
+    <button type="button" class="navarrow left" id="navL" aria-label="Ver secciones anteriores" hidden>‹</button>
+    <nav aria-label="Secciones" id="nav">
+      <button type="button" data-view="adentro" aria-current="true">Estatus</button>
       <button type="button" data-view="escanear">Escanear</button>
       <button type="button" data-view="reparaciones">Reparaciones</button>
       <button type="button" data-view="personal">Personal</button>
       <button type="button" data-view="plantas">Plantas</button>
       <button type="button" data-view="bitacora">Bitácora</button>
     </nav>
+    <button type="button" class="navarrow right" id="navR" aria-label="Ver más secciones" hidden>›</button>
+    </div>
   </div>
 </header>
 
@@ -1104,8 +1121,11 @@ $('#restoreFile').addEventListener('change',async e=>{const f=e.target.files[0];
     toast('Respaldo restaurado: '+n+' registros.')}catch(x){toast('Ese archivo no es un respaldo válido de esta app.')}});
 
 /* ---------- acciones ---------- */
+function navArrows(){const n=$('#nav');if(!n)return;const max=n.scrollWidth-n.clientWidth;$('#navL').hidden=n.scrollLeft<=4;$('#navR').hidden=n.scrollLeft>=max-4}
+$('#nav').addEventListener('scroll',navArrows,{passive:true});addEventListener('resize',navArrows);
+$('#navL').addEventListener('click',()=>{$('#nav').scrollBy({left:-200})});$('#navR').addEventListener('click',()=>{$('#nav').scrollBy({left:200})});
 function setView(v){if(v!=='escanear'&&stream)camStop();view=v;document.querySelectorAll('.view').forEach(s=>s.hidden=s.id!=='v-'+v);
-  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v));ls('ec.view',v)}
+  document.querySelectorAll('nav button').forEach(b=>{b.setAttribute('aria-current',b.dataset.view===v);if(b.dataset.view===v)try{b.scrollIntoView({block:'nearest',inline:'nearest'})}catch(e){}});setTimeout(navArrows,350);ls('ec.view',v)}
 function armed(b){if(!b.hasAttribute('data-confirm')||b.dataset.armed)return true;
   b.dataset.armed='1';b.dataset.txt=b.textContent;b.textContent='Toca otra vez para confirmar';
   setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.txt}},4000);return false}

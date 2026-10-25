@@ -1269,8 +1269,8 @@ $('#pName').addEventListener('input',()=>{if(!editingP&&!$('#pCode').dataset.tou
 $('#pCode').addEventListener('input',e=>{e.target.dataset.touched='1'});
 $('#pForm').addEventListener('submit',async e=>{e.preventDefault();
   const name=$('#pName').value.trim(),code=$('#pCode').value.trim().toUpperCase().slice(0,4),loc=$('#pLoc').value.trim(),site=$('#pSite').value;if(!name||!code||!L.sites.has(site))return;
-  const dup=plants().find(p=>p.id!==(editingP&&editingP.id)&&(p.code===code||(p.site===site&&String(p.name).trim().toLowerCase()===name.toLowerCase())));
-  if(dup){toast('Ya existe un área con esa clave o nombre ('+dup.code+' · '+dup.name+'). Usa otra para no confundirlas.');return}
+  const dup=plants().find(p=>p.id!==(editingP&&editingP.id)&&p.site===site&&(String(p.code).toUpperCase()===code||String(p.name).trim().toLowerCase()===name.toLowerCase()));
+  if(dup){toast('En la planta '+(L.sites.get(site)||{}).name+' ya existe un área con esa clave o nombre ('+dup.code+' · '+dup.name+'). Usa otra para no confundirlas.');return}
   try{if(editingP)await patch('plants',editingP.id,{name,code,loc,color:pColor,site});
       else{const id=uid('p');await put('plants',id,{name,code,loc,color:pColor,site})}
       $('#pCode').dataset.touched='';$('#dlgPlant').close();toast(editingP?'Área actualizada':'Área agregada. Ahora agrégale sus espacios confinados.')}catch(x){}});

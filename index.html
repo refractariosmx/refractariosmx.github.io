@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Control EC">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icono-ec-192.png">
+<link rel="apple-touch-icon" href="icono-ec-192.png">
 <title>Control de Espacios Confinados</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Caveat:wght@700&display=swap">
 <style>
@@ -890,7 +890,7 @@ function renderAlerts(){
 function notify(a){
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   const title=a.type==='rest'?'Descanso terminado':a.st==='over'?'TIEMPO EXCEDIDO':'Cerca del límite';
-  const opt={body:a.type==='rest'?a.v.wName+' ya puede volver a entrar':a.v.wName+' · '+placeText(a.v)+' · máx. '+a.lim+' min',tag:'ec-'+a.type+'-'+a.v.id,icon:'icon-192.png',requireInteraction:a.st==='over'};
+  const opt={body:a.type==='rest'?a.v.wName+' ya puede volver a entrar':a.v.wName+' · '+placeText(a.v)+' · máx. '+a.lim+' min',tag:'ec-'+a.type+'-'+a.v.id,icon:'icono-ec-192.png',requireInteraction:a.st==='over'};
   try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,opt)).catch(()=>{});else new Notification(title,opt)}catch(e){}
 }
 function checkAlerts(){

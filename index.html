@@ -240,9 +240,16 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 .plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
 @media (max-width:420px){.plants{grid-template-columns:minmax(0,1fr)}}
 .plant{background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--zc,#475569);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.plant>header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
-.plant header b{display:block;font-size:1.15rem;overflow-wrap:anywhere}
-.plant header small{color:var(--muted)}
+.plant{padding:0;gap:0;scroll-margin-top:12px}
+.plant>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:12px 14px;min-height:64px}
+.plant>summary::-webkit-details-marker{display:none}
+.plant>summary b{display:block;font-size:1.15rem;overflow-wrap:anywhere}
+.plant>summary small{color:var(--muted)}
+.plant .chev{font-size:1.2rem;color:var(--muted);transition:transform .15s}
+.plant[open] .chev{transform:rotate(90deg)}
+.plant[open]>summary{border-bottom:1px solid var(--line)}
+.plbody{display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px}
+.pltools{display:flex;justify-content:flex-end}
 .splist{display:flex;flex-direction:column;gap:6px}
 .sprow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;text-align:left;width:100%;font-weight:600}
 
@@ -496,7 +503,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <h2>Plantas, áreas y espacios</h2>
       <button type="button" class="btn primary" data-act="newSite">Nueva planta</button>
     </div>
-    <p class="muted">Cada <b>planta</b> (ej. GUERRERO) contiene sus <b>áreas</b> (ej. Planta de ácido, Horno túnel) y cada área sus <b>espacios confinados</b> (ej. Reactor, Ciclón). Toca un espacio para editarlo.</p>
+    <p class="muted">Cada <b>planta</b> (ej. GUERRERO) contiene sus <b>áreas</b> (ej. Planta de ácido, Horno túnel) y cada área sus <b>espacios confinados</b> (ej. Reactor, Ciclón). Toca un área para ver sus espacios confinados.</p>
     <div class="sites" id="plants"></div>
   </section>
 
@@ -1048,14 +1055,17 @@ function renderCards(){
         const gid=g.t+'|'+k;return `<details class="specgrp" data-g="${esc(gid)}" style="--sc:${col}" ${openAll||pfOpen===gid||(pfSpec!=='all'&&sg.length===1&&groups.length===1)?'open':''}><summary><b>${esc(sp.label)}</b><span class="muted">${sp.ws.length} ${sp.ws.length===1?'persona':'personas'}${(()=>{const n=sp.ws.filter(w=>ov.some(o=>o.w===w.id)).length,x=sp.ws.filter(certExpired).length;return (n?' · '+n+' adentro':'')+(x?' · '+x+' sin acceso':'')})()} · toca para ver</span>${g.t!=='C'?`<button type="button" class="btn small" data-act="printLabels" data-t="${g.t}" data-k="${esc(k)}">Imprimir etiquetas</button>`:''}</summary><div class="specbody">${body}</div></details>`}).join('')}
       </section>`}).join('');
 }
+let plOpen='';
 function areaBox(p,ov){const sp=spacesOf(p.id),n=ov.filter(v=>visitPlant(v)===p.id).length,j=jobForPlant(p.id);
-  return `<section class="plant" style="--zc:${pColorOf(p)}">
-      <header>${pTag(p)}<div><b>${esc(p.name)}</b><small>${esc(p.loc||'')}${p.loc&&(n||j)?' · ':''}${n?n+' adentro':''}${n&&j?' · ':''}${j?'Reparación: '+esc(j.name):''}</small></div>
-        <button type="button" class="btn small" data-act="editPlant" data-id="${esc(p.id)}">Editar</button></header>
+  const cnt=sp.length+' '+(sp.length===1?'espacio':'espacios');
+  return `<details class="plant" data-p="${esc(p.id)}" style="--zc:${pColorOf(p)}" ${plOpen===p.id?'open':''}>
+      <summary>${pTag(p)}<div><b>${esc(p.name)}</b><small>${esc(p.loc||'')}${p.loc?' · ':''}${cnt}${j?' · Reparación: '+esc(j.name):''}</small></div>
+        <span class="pill ${n?'in':''}">${n?n+' adentro':'Libre'}</span><span class="chev">▸</span></summary>
+      <div class="plbody"><div class="pltools"><button type="button" class="btn small" data-act="editPlant" data-id="${esc(p.id)}">Editar área</button></div>
       <div class="splist">${sp.length?sp.map(z=>{const k=ov.filter(v=>v.z===z.id).length;return `<button type="button" class="sprow" data-act="editZone" data-id="${esc(z.id)}"><span>${esc(z.name)}</span><span class="pill ${k?'in':''}">${k?k+' adentro':'Libre'}</span></button>`}).join('')
         :'<p class="muted">Sin espacios confinados todavía.</p>'}</div>
       <button type="button" class="btn small primary" data-act="newZone" data-plant="${esc(p.id)}">Agregar espacio confinado</button>
-    </section>`}
+    </div></details>`}
 function renderPlants(){
   const ss=sites(),ov=openVisits(),el=$('#plants');
   if(!ss.length){el.innerHTML=`<div class="empty panel">${ready?'No hay plantas. Toca <b>Nueva planta</b> (ej. GUERRERO), después agrégale sus áreas y a cada área sus espacios confinados.':'Cargando…'}</div>`;return}
@@ -1438,6 +1448,10 @@ $('#cam').addEventListener('change',async e=>{const f=e.target.files[0];e.target
       else showResult({kind:'err',title:'No se leyó el código',msg:'No se encontró un código QR en la foto. Acércate al casco, evita reflejos y vuelve a intentar.'})}
   catch(x){showResult({kind:'err',msg:'No se pudo leer la foto.'})}});
 $('#logDate').addEventListener('change',renderLog);
+// Acordeón de áreas en Plantas: una abierta a la vez
+$('#plants').addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.plant'))return;
+  if(d.open){plOpen=d.dataset.p;document.querySelectorAll('#plants details.plant[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(x){}},60)}
+  else if(plOpen===d.dataset.p)plOpen=''},true);
 // Acordeón: al abrir una especialidad se cierran las demás
 $('#cards').addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.specgrp'))return;
   if(d.open){if(!pfQ){pfOpen=d.dataset.g;document.querySelectorAll('#cards details.specgrp[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}}

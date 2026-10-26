@@ -488,7 +488,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <h2>Personal autorizado</h2>
       <button type="button" class="btn primary" data-act="newWorker">Nueva persona</button>
     </div>
-    <p class="muted">Organizado por <b>P</b> propio o <b>C</b> contratista, luego por <b>especialidad</b> y, en contratistas, por <b>empresa</b>. Cada especialidad tiene su color, también en la etiqueta del casco. Quien tenga vencida la capacitación aparece en rojo y no puede entrar.</p>
+    <p class="muted">Organizado por <b>P</b> propio o <b>C</b> contratista, luego por <b>especialidad</b> y, en contratistas, por <b>empresa</b>. Cada especialidad tiene su color, también en la etiqueta del casco. Quien tenga vencida la capacitación o esté como no apto en su chequeo de presión aparece en rojo y no puede entrar.</p>
     <div class="pfilters">
       <input type="search" id="pSearch" placeholder="Buscar por nombre, clave, puesto o contratista" autocomplete="off">
       <div class="chips" id="pfType"></div>
@@ -550,8 +550,8 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
       <div class="field" id="wCoBox" hidden><label class="label" for="wCo">Nombre de la contratista</label><input id="wCo" maxlength="80" list="coList" placeholder="Ej. Servicios Industriales del Norte"><datalist id="coList"></datalist></div>
       <div class="field"><label class="label" for="wRole">Puesto</label><input id="wRole" maxlength="60"></div>
       <div class="field"><label class="label" for="wSpec">Especialidad</label><input id="wSpec" maxlength="40" list="specList" placeholder="Ej. Refractario, Mecánico"><datalist id="specList"><option value="Refractario"></option><option value="Mecánico"></option><option value="Eléctrico"></option><option value="Soldadura"></option><option value="Instrumentación"></option><option value="Civil"></option><option value="Pintura"></option><option value="Limpieza industrial"></option><option value="Seguridad (EHS)"></option><option value="Supervisión"></option><option value="Operación"></option></datalist></div>
-      <div class="field"><label class="label" for="wBlood">Tipo de sangre</label>
-        <select id="wBlood"><option value="">Sin dato</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
+      <div class="field"><label class="label" for="wBp">Presión arterial</label>
+        <select id="wBp"><option value="">Sin dato</option><option value="apto">Apto</option><option value="noapto">No apto</option><option value="chequeo">Requiere chequeo</option></select></div>
       <div class="field"><label class="label" for="wSup">Supervisor</label><select id="wSup"></select></div>
       <div class="field" style="justify-content:flex-end"><label class="check"><input type="checkbox" id="wIsSup"> Esta persona es supervisor</label></div>
       <div class="field" style="grid-column:1/-1"><label class="label" for="wCert">Capacitación de espacios confinados: vigente hasta</label><input type="date" id="wCert">
@@ -714,6 +714,9 @@ const visitPlant=v=>v.p||plantOfZone(v.z);
 const coId=name=>'c-'+slug(String(name||'').trim()||'sin-empresa');
 const coOf=name=>L.companies.get(coId(name));
 const certExpired=w=>!!(w&&w.cert&&w.cert<dayKey(Date.now()));
+const BP={apto:'Apto',noapto:'No apto',chequeo:'Requiere chequeo'};
+const bpBlocked=w=>!!(w&&w.bp==='noapto');
+const noAccess=w=>certExpired(w)||bpBlocked(w);
 const SPEC_COLORS={'refractario':'#C2410C','mecanico':'#1D4ED8','electrico':'#A16207','soldadura':'#B91C1C','instrumentacion':'#7C3AED','civil':'#57534E','pintura':'#BE185D','limpieza industrial':'#0E7490','seguridad (ehs)':'#15803D','supervision':'#1F2937','operacion':'#0F766E'};
 const specKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 function specColor(n){const k=specKey(n);if(!k)return '#6B7280';if(SPEC_COLORS[k])return SPEC_COLORS[k];let h=0;for(const ch of k)h=(h*31+ch.charCodeAt(0))>>>0;return ['#0369A1','#9333EA','#B45309','#047857','#BE123C','#4338CA'][h%6]}
@@ -824,13 +827,14 @@ async function toggle(w,via){
   const z=L.zones.get(selZone),p=z&&L.plants.get(z.plant);
   if(!z||!p)return {kind:'err',title:'Elige el espacio',msg:'La clave de '+w.name+' es correcta. Toca primero la planta, el área y el espacio confinado donde va a entrar (pasos 1, 2 y 3) y vuelve a escanear.'};
   if(certExpired(w))return {kind:'err',title:'Acceso bloqueado',msg:w.name+' tiene vencida su capacitación de espacios confinados (venció el '+w.cert+'). No puede entrar hasta renovarla y actualizar la fecha en Personal.'};
+  if(bpBlocked(w))return {kind:'err',title:'Acceso bloqueado',msg:w.name+' está como NO APTO en su chequeo de presión arterial (carnet médico). No puede entrar hasta tener un chequeo apto y actualizarlo en Personal.'};
   const rest=activeRestOf(w.id);let restWarn='';
   if(rest){if(now<rest.restEnd)restWarn='Entró antes de terminar su descanso: le faltaban '+dur(rest.restEnd-now)+'.';await patch('visits',rest.id,{restDone:true})}
   const st=L.sites.get(p.site),j=jobForPlant(p.id),lim=selReg,v={w:w.id,wName:w.name,wCo:w.company||'',wType:w.type||'',wSpec:w.spec||'',supName:supOf(w),s:p.site||'',sName:st?st.name:'',p:p.id,pName:p.name,z:z.id,zName:z.name,in:now,out:0,open:true,via,lim,job:j?j.id:'',jobName:j?j.name:''};
   await put('visits',uid('v'),v);
   if(j)await addToJob(j,w);
   beep(true);
-  return {kind:'in',w,v,t:now,lim,job:j,warn:[restWarn,jobExpired(j)?'La reparación '+j.name+' venció el '+fmtDay(j.end)+'. Extiéndela o ciérrala.':'',w.cert?'':'Sin fecha de capacitación de espacios confinados registrada. Verifícala.'].filter(Boolean).join(' ')};
+  return {kind:'in',w,v,t:now,lim,job:j,warn:[restWarn,jobExpired(j)?'La reparación '+j.name+' venció el '+fmtDay(j.end)+'. Extiéndela o ciérrala.':'',w.cert?'':'Sin fecha de capacitación de espacios confinados registrada. Verifícala.',w.bp==='chequeo'?'Requiere chequeo de presión arterial. Revisa su carnet médico.':''].filter(Boolean).join(' ')};
 }
 async function handleCode(code,via){
   code=String(code).trim();if(!code)return;
@@ -1022,10 +1026,10 @@ function renderJobs(){
   el.innerHTML=h;
 }
 let pfType='all',pfSpec='all',pfQ='',pfOpen='';
-function workerCard(w,ov){const v=ov.find(o=>o.w===w.id),r=!v&&activeRestOf(w.id),x=certExpired(w);
+function workerCard(w,ov){const v=ov.find(o=>o.w===w.id),r=!v&&activeRestOf(w.id),x=noAccess(w);
   return `<button type="button" class="card wk ${x?'blocked':''}" data-act="openWorker" data-id="${esc(w.id)}">${avatar(w)}
     <span><b>${esc(w.name)}</b><small>${esc([w.role||'Sin puesto',w.id].join(' · '))}</small>${w.isSup?'<small><b>Supervisor</b></small>':supOf(w)?`<small>Sup. ${esc(supOf(w))}</small>`:''}
-    ${x?'<span class="pill over">Sin acceso · capacitación vencida</span>':`<span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span>`}</span>${typeBadge(w.type)}</button>`}
+    ${x?'<span class="pill over">Sin acceso · '+(certExpired(w)?'capacitación vencida':'no apto (presión)')+'</span>':`<span class="pill ${v?'in':r?'rest':''}">${v?'Adentro · '+esc(placeText(v)):r?'En descanso':'Afuera'}</span>`}</span>${typeBadge(w.type)}</button>`}
 function renderCards(){
   const all=workers(),ov=openVisits(),el=$('#cards');
   $('#coList').innerHTML=[...new Set(all.filter(w=>w.type==='C').map(w=>String(w.company||'').trim()).filter(Boolean))].sort().map(n=>`<option value="${esc(n)}"></option>`).join('');
@@ -1042,17 +1046,17 @@ function renderCards(){
   if(!ws.length){el.innerHTML='<div class="empty panel">No hay personas que coincidan con la búsqueda o los filtros.</div>';return}
   const groups=[['P','Personal propio'],['C','Contratistas'],['x','Sin clasificar']].map(([t,label])=>({t,label,ws:ws.filter(w=>tk(w)===t)})).filter(g=>g.ws.length);
   const openAll=!!q;
-  el.innerHTML=groups.map(g=>{const inside=g.ws.filter(w=>ov.some(o=>o.w===w.id)).length,blk=g.ws.filter(certExpired).length;
+  el.innerHTML=groups.map(g=>{const inside=g.ws.filter(w=>ov.some(o=>o.w===w.id)).length,blk=g.ws.filter(noAccess).length;
     const bySpec=new Map();for(const w of g.ws){const k=specKey(w.spec);if(!bySpec.has(k))bySpec.set(k,{label:specLabel(w.spec),ws:[]});bySpec.get(k).ws.push(w)}
     const sg=[...bySpec.entries()].sort((a,b)=>(a[0]?0:1)-(b[0]?0:1)||a[1].label.localeCompare(b[1].label,'es'));
     return `<section class="coblock"><header>${typeBadge(g.t==='x'?'':g.t,'l')}
-      <div class="coname">${g.label}<small>${g.ws.length} ${g.ws.length===1?'persona':'personas'}${inside?' · '+inside+' adentro':''}${blk?' · '+blk+' sin acceso por capacitación vencida':''}${g.t==='x'?' · edítalos para elegir P o C':''}</small></div></header>
+      <div class="coname">${g.label}<small>${g.ws.length} ${g.ws.length===1?'persona':'personas'}${inside?' · '+inside+' adentro':''}${blk?' · '+blk+' sin acceso (capacitación vencida o no apto)':''}${g.t==='x'?' · edítalos para elegir P o C':''}</small></div></header>
       ${sg.map(([k,sp])=>{const col=specColor(sp.label);
         let body;
         if(g.t==='C'){const byCo=new Map();for(const w of sp.ws){const n=String(w.company||'').trim()||'Sin nombre de contratista';if(!byCo.has(n))byCo.set(n,[]);byCo.get(n).push(w)}
           body=[...byCo.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([co,cw])=>`<div class="cosub"><span>${esc(co)} · ${cw.length}</span><button type="button" class="btn small" data-act="printLabels" data-t="C" data-k="${esc(k)}" data-co="${esc(co)}">Imprimir etiquetas</button></div><div class="cards">${cw.map(w=>workerCard(w,ov)).join('')}</div>`).join('')}
         else body=`<div class="cards">${sp.ws.map(w=>workerCard(w,ov)).join('')}</div>`;
-        const gid=g.t+'|'+k;return `<details class="specgrp" data-g="${esc(gid)}" style="--sc:${col}" ${openAll||pfOpen===gid||(pfSpec!=='all'&&sg.length===1&&groups.length===1)?'open':''}><summary><b>${esc(sp.label)}</b><span class="muted">${sp.ws.length} ${sp.ws.length===1?'persona':'personas'}${(()=>{const n=sp.ws.filter(w=>ov.some(o=>o.w===w.id)).length,x=sp.ws.filter(certExpired).length;return (n?' · '+n+' adentro':'')+(x?' · '+x+' sin acceso':'')})()} · toca para ver</span>${g.t!=='C'?`<button type="button" class="btn small" data-act="printLabels" data-t="${g.t}" data-k="${esc(k)}">Imprimir etiquetas</button>`:''}</summary><div class="specbody">${body}</div></details>`}).join('')}
+        const gid=g.t+'|'+k;return `<details class="specgrp" data-g="${esc(gid)}" style="--sc:${col}" ${openAll||pfOpen===gid||(pfSpec!=='all'&&sg.length===1&&groups.length===1)?'open':''}><summary><b>${esc(sp.label)}</b><span class="muted">${sp.ws.length} ${sp.ws.length===1?'persona':'personas'}${(()=>{const n=sp.ws.filter(w=>ov.some(o=>o.w===w.id)).length,x=sp.ws.filter(noAccess).length;return (n?' · '+n+' adentro':'')+(x?' · '+x+' sin acceso':'')})()} · toca para ver</span>${g.t!=='C'?`<button type="button" class="btn small" data-act="printLabels" data-t="${g.t}" data-k="${esc(k)}">Imprimir etiquetas</button>`:''}</summary><div class="specbody">${body}</div></details>`}).join('')}
       </section>`}).join('');
 }
 let plOpen='';
@@ -1193,7 +1197,7 @@ function labelCanvas(w){
   const q=qrCanvas('EC1:'+w.id,500);x.imageSmoothingEnabled=false;x.drawImage(q,70,116,500,500);
   x.font='700 52px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText(String(w.name).toUpperCase(),W/2,676,W-40);
   x.font='500 28px "Barlow",Arial,sans-serif';x.fillText([w.role,w.type==='C'?(w.company||'CONTRATISTA'):w.type==='P'?'PERSONAL PROPIO':''].filter(Boolean).join(' · '),W/2,720,W-40);
-  x.font='700 40px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('CLAVE '+w.id+(w.blood?'   ·   SANGRE '+w.blood:''),W/2,780,W-40);
+  x.font='700 40px "Barlow Condensed","Arial Narrow",Arial,sans-serif';x.fillText('CLAVE '+w.id,W/2,780,W-40);
   // banda de especialidad + P/C
   x.fillStyle=specColor(w.spec);x.fillRect(0,808,W,112);
   const t=w.type==='C'?'C':w.type==='P'?'P':'';
@@ -1213,7 +1217,7 @@ function openForm(w){
   editingW=w||null;pendingPhoto=w?w.photo||null:null;
   $('#wFormTitle').textContent=w?'Editar datos':'Nueva persona';
   $('#wName').value=w?w.name:'';$('#wCo').value=w?w.company||'':'';$('#wRole').value=w?w.role||'':'';$('#wSpec').value=w?w.spec||'':'';
-  $('#wBlood').value=w?w.blood||'':'';$('#wCert').value=w?w.cert||'':'';
+  $('#wBp').value=w?w.bp||'':'';$('#wCert').value=w?w.cert||'':'';
   wTypeSel=w&&(w.type==='P'||w.type==='C')?w.type:'';renderType();$('#wIsSup').checked=!!(w&&w.isSup);
   const sups=workers().filter(x=>x.isSup&&(!w||x.id!==w.id));
   $('#wSup').innerHTML='<option value="">Sin supervisor asignado</option>'+sups.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')
@@ -1234,7 +1238,7 @@ function openWorker(id){
     <dl class="dl"><dt>Clave</dt><dd class="num"><b>${esc(w.id)}</b></dd>
       <dt>Tiempo adentro hoy</dt><dd class="num">${dur(tot)} en ${td.length} ingreso(s)</dd>
       <dt>Reparaciones</dt><dd>${jobsOf.length?jobsOf.map(j=>esc(j.name)).join(', '):'Ninguna activa'}</dd>
-      <dt>Tipo de sangre</dt><dd>${esc(w.blood||'Sin dato')}</dd>
+      <dt>Presión arterial (carnet médico)</dt><dd>${w.bp==='noapto'?'<b style="color:var(--danger)">No apto. No puede acceder a espacios confinados.</b>':w.bp==='chequeo'?'<b>Requiere chequeo</b>':esc(BP[w.bp]||'Sin dato')}</dd>
       <dt>Supervisor</dt><dd>${w.isSup?'Es supervisor':esc(supOf(w)||'Sin asignar')}</dd>
       <dt>Capacitación de espacios confinados</dt><dd>${w.cert?(certExpired(w)?'<b style="color:var(--danger)">Vencida desde '+esc(w.cert)+'. No puede acceder a espacios confinados.</b>':'Vigente hasta '+esc(w.cert)):'Sin fecha registrada'}</dd></dl>
     <div class="qrbox">${label?`<img src="${label}" alt="Etiqueta con código QR de ${esc(w.name)}">`:'<p class="muted">No se pudo generar el código QR.</p>'}
@@ -1255,7 +1259,7 @@ $('#wForm').addEventListener('submit',async e=>{e.preventDefault();
   const name=$('#wName').value.trim();if(!name)return;
   if(!wTypeSel){toast('Elige si la persona es P (propia) o C (contratista).');return}
   const id=editingW?editingW.id:newId();
-  const data={...(editingW||{}),name,type:wTypeSel,company:wTypeSel==='C'?$('#wCo').value.trim():'',isSup:$('#wIsSup').checked,sup:$('#wSup').value,supName:$('#wSup').value?(L.workers.get($('#wSup').value)||{}).name||'':'',role:$('#wRole').value.trim(),spec:$('#wSpec').value.trim(),blood:$('#wBlood').value,cert:$('#wCert').value,photo:pendingPhoto||'',createdAt:editingW?editingW.createdAt||Date.now():Date.now()};
+  const data={...(editingW||{}),name,type:wTypeSel,company:wTypeSel==='C'?$('#wCo').value.trim():'',isSup:$('#wIsSup').checked,sup:$('#wSup').value,supName:$('#wSup').value?(L.workers.get($('#wSup').value)||{}).name||'':'',role:$('#wRole').value.trim(),spec:$('#wSpec').value.trim(),bp:$('#wBp').value,cert:$('#wCert').value,photo:pendingPhoto||'',createdAt:editingW?editingW.createdAt||Date.now():Date.now()};
   delete data.id;
   try{await put('workers',id,data);$('#dlgForm').close();toast(editingW?'Datos actualizados':'Persona registrada. Ya tiene su código QR.');if(!editingW)openWorker(id)}catch(x){}});
 

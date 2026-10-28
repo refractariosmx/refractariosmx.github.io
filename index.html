@@ -128,6 +128,18 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 /* Alertas */
 .alerts{display:flex;flex-direction:column;gap:8px}
 .alertrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:12px 16px;border-radius:12px;border:2px solid var(--warn);background:var(--warn-soft);color:var(--warn)}
+.dept{display:flex;align-items:center;gap:8px;margin:6px 10px 2px;padding:4px 10px;border-left:6px solid var(--sc,#6B7280);background:var(--surface-2);border-radius:6px;font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
+.dept span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
+.dchip{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--sc,#6B7280);color:#fff;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;margin-right:6px;vertical-align:1px}
+.alertrow.others{border-style:dashed;border-color:var(--line);background:var(--surface-2);color:var(--muted);animation:none!important}
+.alertrow.muted{opacity:.7;animation:none!important}
+.watch{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted);font-weight:600}
+.watch select{font:inherit;color:var(--ink,inherit);padding:8px 10px;border-radius:10px;border:2px solid var(--yellow);background:var(--surface);min-height:40px}
+.jdept{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.jdept div{border-left:5px solid var(--sc,#6B7280);background:var(--surface-2);border-radius:8px;padding:6px 10px;font-size:.85rem}
+.jdept b{text-transform:uppercase;letter-spacing:.03em}
+body.cap [data-act="editWorker"],body.cap [data-act="delWorker"],body.cap [data-act="editPlant"],body.cap [data-act="editSite"],body.cap [data-act="delCrew"],body.cap [data-act="delJob"],body.cap [data-act="extendJob"],body.cap #sDel,body.cap #pDel,body.cap #zDel,body.cap label[for="restoreFile"]{display:none!important}
+.rolebadge{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--yellow);color:#1B1C1F;font-weight:700;font-size:.75rem}
 .alertrow[data-st="over"]{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
 .alertrow[data-st="over"]:not(.acked){animation:blink 1s steps(2) infinite}
 .alertrow[data-st="rest"]{border-color:var(--rest);background:var(--rest-soft);color:var(--rest)}
@@ -422,6 +434,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
     <div class="head">
       <h2>Trabajando ahora</h2>
       <div class="tools">
+        <label class="watch" for="watchSel">Esta tablet vigila <select id="watchSel"></select></label>
         <button type="button" class="btn small" data-act="notifOn" id="notifBtn" hidden>Activar avisos del sistema</button>
         <button type="button" class="btn primary" data-act="goScan">Escanear casco</button>
       </div>
@@ -630,6 +643,11 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
   </form>
 </dialog>
 
+<dialog id="dlgAsk">
+  <div class="dlg"><h2 id="askT"></h2><p id="askM"></p>
+    <div class="acts"><button type="button" class="btn" id="askNo">Cancelar</button><button type="button" class="btn primary" id="askYes">Aceptar</button></div></div>
+</dialog>
+
 <dialog id="dlgInsp">
   <form class="dlg" id="iForm">
     <h2>Inspección rápida</h2>
@@ -744,6 +762,20 @@ const specKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').t
 function specColor(n){const k=specKey(n);if(!k)return '#6B7280';if(SPEC_COLORS[k])return SPEC_COLORS[k];let h=0;for(const ch of k)h=(h*31+ch.charCodeAt(0))>>>0;return ['#0369A1','#9333EA','#B45309','#047857','#BE123C','#4338CA'][h%6]}
 const specLabel=n=>String(n||'').trim()||'Sin especialidad';
 const specOf=v=>v.wSpec||((L.workers.get(v.w)||{}).spec)||'';
+const deptKey=v=>specKey(specOf(v))||'-';
+function deptGroups(vs){const m=new Map();for(const v of vs){const k=deptKey(v);if(!m.has(k))m.set(k,{label:specLabel(specOf(v)),vs:[]});m.get(k).vs.push(v)}
+  return [...m.values()].sort((a,b)=>a.label.localeCompare(b.label,'es'))}
+function deptStats(vs){return deptGroups(vs).map(g=>{const ws=new Set(g.vs.map(v=>v.w));const P=[...ws].filter(id=>{const v=g.vs.find(x=>x.w===id);return typeOf(v)==='P'}).length;
+  return {label:g.label,ppl:ws.size,P,C:ws.size-P,n:g.vs.length,tot:g.vs.reduce((a,v)=>a+((v.open?Date.now():v.out)-v.in),0),exc:g.vs.filter(exceeded).length,ins:g.vs.filter(v=>v.open).length}})}
+const dchip=label=>`<span class="dchip" style="--sc:${specColor(label)}">${esc(label)}</span>`;
+let watch=ls('ec.watch')||'all',showOthers=false;
+const isMine=a=>watch==='all'||deptKey(a.v)===watch;
+const ADMINS=['tablets@refractariosmx.com'];
+const isAdmin=()=>{try{return !SYNC.user||ADMINS.includes(String(SYNC.user.email||'').toLowerCase())}catch(e){return true}};
+function applyRole(){document.body.classList.toggle('cap',!isAdmin())}
+const BLOCK=new Set(['editWorker','delWorker','editPlant','editSite','editZone','delSite','delPlant','delZone','delCrew','delJob','extendJob']);
+let askRes=null;
+function ask(title,msg,yes,no){return new Promise(res=>{askRes=res;$('#askT').textContent=title;$('#askM').innerHTML=msg;$('#askYes').textContent=yes||'Aceptar';$('#askNo').textContent=no||'Cancelar';$('#dlgAsk').showModal()})}
 const typeOf=v=>v.wType||((L.workers.get(v.w)||{}).type)||'';
 const typeName=t=>t==='P'?'Propia':t==='C'?'Contratista':'';
 function typeBadge(t,cls=''){return t==='P'||t==='C'?`<span class="tb tb-${t} ${cls}" title="${typeName(t)}">${t}</span>`:`<span class="tb tb-x ${cls}" title="Sin clasificar">?</span>`}
@@ -783,7 +815,7 @@ const codeFrom=s=>{const w=String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toU
   return (w.length>1?w.map(x=>x[0]).join(''):(w[0]||'P').slice(0,3)).slice(0,4)};
 let migrating=false;
 async function migrate(){
-  if(migrating||!ready)return;
+  if(migrating||!ready||!isAdmin())return;
   const loose=[...L.zones.values()].filter(z=>!z.plant),oldJobs=[...L.jobs.values()].filter(j=>!j.plant&&plantOfZone(j.z)),noSite=()=>[...L.plants.values()].filter(p=>!p.site||!L.sites.has(p.site));
   if(!loose.length&&!oldJobs.length&&!noSite().length)return;
   migrating=true;
@@ -911,17 +943,22 @@ function alertsNow(){
   const rank={over:0,rest:1,warn:2};return out.sort((a,b)=>rank[a.st]-rank[b.st]||a.v.in-b.v.in);
 }
 function renderAlerts(){
-  const el=$('#alerts'),as=alertsNow(),xj=jobs().filter(jobExpired);el.hidden=!as.length&&!xj.length;
+  renderWatch();
+  const el=$('#alerts'),all=alertsNow(),xj=jobs().filter(jobExpired),as=all.filter(isMine),oth=all.filter(a=>!isMine(a));el.hidden=!all.length&&!xj.length;
+  const othSum=(()=>{const m=new Map();for(const a of oth){const l=specLabel(specOf(a.v));m.set(l,(m.get(l)||0)+1)}return [...m.entries()].map(([l,n])=>l+' '+n).join(' · ')})();
   el.innerHTML=xj.map(j=>`<div class="alertrow" data-st="over" style="animation:none"><div><b class="kind">REPARACIÓN VENCIDA</b><span class="what">${esc(j.name)} · ${esc(j.pName||'')} · terminaba el ${fmtDay(j.end)}. ¿La extiendes o la cierras?</span></div>
-    <div class="tools"><button type="button" class="btn" data-act="extendJob" data-id="${esc(j.id)}">Extender</button><button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}" data-confirm>Cerrar y enviar</button></div></div>`).join('')+as.map(a=>a.type==='rest'
-    ?`<div class="alertrow" data-st="rest"><div><b class="kind">DESCANSO TERMINADO</b><span class="what">${esc(a.v.wName)} ya puede volver a entrar (descansó ${a.v.restMin} min, salió de ${esc(placeText(a.v))}).</span></div>
+    <div class="tools"><button type="button" class="btn" data-act="extendJob" data-id="${esc(j.id)}">Extender</button><button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}">Cerrar y enviar</button></div></div>`).join('')+as.map(a=>alertRow(a,false)).join('')
+    +(oth.length?`<div class="alertrow others"><div><b class="kind">${oth.length} ${oth.length===1?'alerta':'alertas'} de otros departamentos</b><span class="what">${esc(othSum)} · sin sonido en esta tablet</span></div><button type="button" class="btn small" data-act="toggleOthers">${showOthers?'Ocultar':'Ver'}</button></div>`
+      +(showOthers?oth.map(a=>alertRow(a,true)).join(''):''):'');
+}
+function alertRow(a,muted){const dc=dchip(specLabel(specOf(a.v)));return a.type==='rest'
+    ?`<div class="alertrow ${muted?'muted':''}" data-st="rest"><div><b class="kind">${dc}DESCANSO TERMINADO</b><span class="what">${esc(a.v.wName)} ya puede volver a entrar (descansó ${a.v.restMin} min, salió de ${esc(placeText(a.v))}).</span></div>
        <button type="button" class="btn" data-act="restAck" data-id="${esc(a.v.id)}">Enterado</button></div>`
-    :`<div class="alertrow ${a.v.ack?'acked':''}" data-st="${a.st}" data-since="${a.v.in}" data-limit="${a.lim}" data-fixed="1">
-    <div><b class="kind">${a.st==='over'?'TIEMPO EXCEDIDO':'CERCA DEL LÍMITE'}</b>
+    :`<div class="alertrow ${a.v.ack?'acked':''} ${muted?'muted':''}" data-st="${a.st}" data-since="${a.v.in}" data-limit="${a.lim}" data-fixed="1">
+    <div><b class="kind">${dc}${a.st==='over'?'TIEMPO EXCEDIDO':'CERCA DEL LÍMITE'}</b>
       <span class="what">${esc(a.v.wName)} · ${esc(placeText(a.v))} · lleva <span class="timer num">${dur(Date.now()-a.v.in)}</span> de ${a.lim} min${a.st==='over'?'. Debe salir ahora.':''}</span></div>
     ${a.st==='over'?(a.v.ack?`<span class="what">Enterado ${fmtHM(a.v.ack)}</span>`:`<button type="button" class="btn" data-act="ack" data-id="${esc(a.v.id)}">Enterado</button>`):''}
-  </div>`).join('');
-}
+  </div>`}
 function notify(a){
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   const title=a.type==='rest'?'Descanso terminado':a.st==='over'?'TIEMPO EXCEDIDO':'Cerca del límite';
@@ -929,10 +966,10 @@ function notify(a){
   try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,opt)).catch(()=>{});else new Notification(title,opt)}catch(e){}
 }
 function checkAlerts(){
-  const as=alertsNow(),now=Date.now(),xj=jobs().filter(jobExpired),sig=as.map(a=>a.type+a.v.id+a.st+(a.v.ack?1:0)).join('|')+'#'+restsNow().filter(v=>now>=v.restEnd).length+'#'+xj.map(j=>j.id).join(',');
+  const all=alertsNow(),as=all.filter(isMine),now=Date.now(),xj=jobs().filter(jobExpired),sig=watch+(showOthers?1:0)+'@'+all.length+'@'+as.map(a=>a.type+a.v.id+a.st+(a.v.ack?1:0)).join('|')+'#'+restsNow().filter(v=>now>=v.restEnd).length+'#'+xj.map(j=>j.id).join(',');
   for(const j of xj)if(!notified.has('job'+j.id)){notified.set('job'+j.id,1);if(ready)chime()}
   if(sig!==alertSig){alertSig=sig;renderAlerts();renderHeader();renderRests()}
-  const keys=new Set(as.map(a=>a.type+a.v.id));for(const k of [...notified.keys()])if(!keys.has(k))notified.delete(k);
+  const keys=new Set(all.map(a=>a.type+a.v.id));for(const k of [...notified.keys()])if(!keys.has(k))notified.delete(k);
   for(const a of as){const k=a.type+a.v.id;if(notified.get(k)!==a.st){notified.set(k,a.st);if(ready){notify(a);if(a.st==='warn')tone([[700,.15],[0,.08],[700,.15]]);if(a.type==='rest'){chime();lastChime=now}}}}
   if(as.some(a=>a.st==='over'&&!a.v.ack)&&now-lastAlarm>8000){lastAlarm=now;alarm()}
   else if(as.some(a=>a.type==='rest')&&now-lastChime>20000){lastChime=now;chime()}
@@ -966,7 +1003,8 @@ function areaCard(pid,vs){const p=L.plants.get(pid),j=jobForPlant(pid);
   return `<section class="area occ" style="--zc:${pColorOf(p)}">
     <header>${p?pTag(p):'<span class="tag">?</span>'}<div><h3>${esc(p?p.name:(vs[0].pName||'Área eliminada'))}</h3>${p&&p.loc?`<small>${esc(p.loc)}</small>`:''}</div><span class="cnt num">${vs.length}</span></header>
     ${j?`<div class="jobline">Reparación: <b>${esc(j.name)}</b><span class="muted">${crewOf(j.id).length} activos</span></div>`:''}
-    ${[...bySpace.entries()].map(([zid,zv])=>{const z=L.zones.get(zid);return `<div class="space">${esc(z?z.name:zv[0].zName)}<span>${zv.length} adentro</span></div>${zv.map(personRow).join('')}`}).join('')}
+    ${[...bySpace.entries()].map(([zid,zv])=>{const z=L.zones.get(zid);return `<div class="space">${esc(z?z.name:zv[0].zName)}<span>${zv.length} adentro</span></div>${deptGroups(zv).map(g=>{const P=g.vs.filter(v=>typeOf(v)==='P').length;
+      return `<div class="dept" style="--sc:${specColor(g.label)}">${esc(g.label)}<span>${g.vs.length} adentro (${P} P · ${g.vs.length-P} C)</span></div>${g.vs.map(personRow).join('')}`}).join('')}`}).join('')}
     ${freeSp.length?`<div class="free">Libres: ${esc(freeSp.join(', '))}</div>`:''}</section>`}
 function renderBoard(){
   const el=$('#board'),ov=openVisits(),ps=plants();
@@ -1042,7 +1080,7 @@ function renderJobs(){
           <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')
         :'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta área.</p>'}</div>
       <div class="tools"><button type="button" class="btn ${x?'primary':''}" data-act="extendJob" data-id="${esc(j.id)}">${j.end?'Extender o cambiar fechas':'Poner fechas'}</button>
-        <button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}" data-confirm>Cerrar y enviar bitácora</button></div>
+        <button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}">Cerrar y enviar bitácora</button></div>
     </section>`}).join('');
   if(cl.length)h+=`<div class="sitehead" style="margin-top:12px">Reparaciones cerradas</div>`+cl.map(j=>`<section class="job closed">
       <div><h3>${esc(j.name)}</h3><div class="muted">${jobPlace(j)}</div><div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}<span class="muted">Cerrada el ${fmtD(j.closedAt||Date.now())}</span></div></div>
@@ -1129,6 +1167,7 @@ function renderLog(){
         ${j?`<div class="muted">${jobPlace(j)}</div><div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}</div>`:k?'':'<div class="muted">Entradas en áreas que no tenían una reparación activa.</div>'}</div>
         <button type="button" class="btn small primary" data-act="sendJobLog" data-id="${esc(k)}">Enviar bitácora</button></header>
       <div class="jsum"><div><b class="num">${ppl}</b><span>personas</span></div><div><b class="num">${vs.length}</b><span>ingresos</span></div><div><b class="num">${dur(tot)}</b><span>tiempo total adentro</span></div><div><b class="num" style="${exc?'color:var(--danger)':''}">${exc}</b><span>excedieron su tiempo</span></div>${ins?`<div><b class="num" style="color:var(--safe)">${ins}</b><span>adentro ahora</span></div>`:''}</div>
+      <div class="jdept">${deptStats(vs).map(d=>`<div style="--sc:${specColor(d.label)}"><b>${esc(d.label)}</b> · ${d.ppl} ${d.ppl===1?'persona':'personas'} (${d.P} P · ${d.C} C) · ${d.n} ingresos · <span class="num">${dur(d.tot)}</span>${d.exc?` · <b style="color:var(--danger)">${d.exc} excedieron</b>`:''}${d.ins?` · <b style="color:var(--safe)">${d.ins} adentro</b>`:''}</div>`).join('')}</div>
       <details><summary>Ver los ${vs.length} registros</summary><div class="tablewrap">${tableHtml(vs)}</div></details></section>`}).join('')}</div>`;
 }
 function csvFor(rows,fname){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
@@ -1173,7 +1212,11 @@ async function pdfFor(rows,o){
   const boxes=[[String(ppl),'personas'],[String(rows.length),'ingresos'],[dur(tot),'tiempo total adentro'],[String(exc),'excedieron su tiempo']];
   let bx=M;y-=4;for(const [a,b2] of boxes){page.drawRectangle({x:bx,y:y-32,width:150,height:34,color:zeb,borderColor:lin,borderWidth:.6});
     page.drawText(pdfSafe(a),{x:bx+8,y:y-15,size:13,font:B,color:b2.startsWith('exced')&&exc?red:ink});page.drawText(pdfSafe(b2),{x:bx+8,y:y-27,size:7.5,font:F,color:mut});bx+=158}
-  y-=46;tableHead();
+  y-=46;
+  const ds=deptStats(rows);if(ds.length){page.drawText(pdfSafe('POR ESPECIALIDAD'),{x:M,y,size:8.5,font:B,color:ink});y-=12;
+    for(const d of ds){const c=specColor(d.label),hx=parseInt(c.slice(1),16);page.drawRectangle({x:M,y:y-2,width:4,height:10,color:rgb((hx>>16&255)/255,(hx>>8&255)/255,(hx&255)/255)});
+      page.drawText(fit(d.label.toUpperCase()+' — '+d.ppl+(d.ppl===1?' persona':' personas')+' ('+d.P+' P · '+d.C+' C) · '+d.n+' ingresos · tiempo '+dur(d.tot)+' · '+d.exc+' excedieron',F,8.5,W-2*M-10),{x:M+9,y,size:8.5,font:F,color:ink});y-=12}y-=6}
+  tableHead();
   rows.forEach((v,i)=>{if(y<M+30){head();tableHead()}
     if(i%2)page.drawRectangle({x:M,y:y-12,width:W-2*M,height:14,color:zeb});
     let x=M;for(const c of cols){const t=c[2](v),isX=c[0]==='Excedió';
@@ -1352,6 +1395,21 @@ $('#jForm').addEventListener('submit',async e=>{e.preventDefault();
     for(const v of openVisits().filter(v=>visitPlant(v)===p.id))await put('crew',id+'-'+v.w,{job:id,w:v.w,name:v.wName,at:Date.now()});
     $('#dlgJob').close();toast('Reparación creada. Quien escanee su entrada en '+p.name+' quedará activo en ella.')}catch(x){}});
 
+/* ---------- confirmaciones y permisos ---------- */
+$('#askYes').addEventListener('click',()=>{$('#dlgAsk').close();const r=askRes;askRes=null;r&&r(true)});
+$('#askNo').addEventListener('click',()=>{$('#dlgAsk').close();const r=askRes;askRes=null;r&&r(false)});
+$('#dlgAsk').addEventListener('cancel',()=>{const r=askRes;askRes=null;r&&r(false)});
+const ADD_FORMS={wForm:()=>!editingW,sForm:()=>!editingS,pForm:()=>!editingP,zForm:()=>!editingZ,jForm:()=>true,iForm:()=>true};
+document.addEventListener('submit',async e=>{const fm=e.target;if(isAdmin()||!ADD_FORMS[fm.id]||!ADD_FORMS[fm.id]()||fm.dataset.ok)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const ok=await ask('⚠ Revisa antes de guardar','Tu cuenta es de <b>capturista</b>: una vez guardado <b>no podrás modificarlo ni borrarlo</b>. Solo el administrador puede hacerlo.<br><br>¿Los datos están correctos?','Sí, guardar','Revisar otra vez');
+  if(ok){fm.dataset.ok='1';try{fm.requestSubmit()}finally{delete fm.dataset.ok}}},true);
+$('#watchSel').addEventListener('change',e=>{watch=e.target.value;ls('ec.watch',watch);showOthers=false;alertSig='';checkAlerts();toast(watch==='all'?'Esta tablet vigila a todos los departamentos.':'Esta tablet solo hace sonar las alertas de '+e.target.selectedOptions[0].textContent+'.')});
+function renderWatch(){const m=new Map();for(const w of workers()){const k=specKey(w.spec);if(k&&!m.has(k))m.set(k,specLabel(w.spec))}
+  const opts=[['all','Todos los departamentos']].concat([...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'es')));
+  if(watch!=='all'&&!m.has(watch))opts.push([watch,watch]);
+  const h=opts.map(([k,l])=>`<option value="${esc(k)}" ${k===watch?'selected':''}>${esc(l)}</option>`).join('');if($('#watchSel').innerHTML!==h)$('#watchSel').innerHTML=h}
+
 /* ---------- inspección rápida ---------- */
 let inspBusy=false;
 async function autoCloseInsp(){if(inspBusy)return;const xs=jobs().filter(j=>inspOver(j)&&!openVisits().some(v=>visitPlant(v)===(j.plant||plantOfZone(j.z))));
@@ -1396,7 +1454,7 @@ function camLoop(t){
   camSeen={code:r.data,last:now};
   if(!same){lastScan={code:'',t:0};handleCode(r.data,'qr')}}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)camStop()});
-$('#restoreFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+$('#restoreFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!isAdmin()){toast('Solo el administrador puede restaurar un respaldo.');return}
   try{const d=JSON.parse(await f.text());if(!d||d.app!=='espacios-confinados')throw new Error('fmt');
     let n=0;for(const c of COLS)for(const r of (Array.isArray(d[c])?d[c]:[]))if(r&&typeof r.id==='string'){await put(c,r.id,r);n++}
     toast('Respaldo restaurado: '+n+' registros.')}catch(x){toast('Ese archivo no es un respaldo válido de esta app.')}});
@@ -1429,6 +1487,7 @@ const ACT={
   newZone(b){openZone(null,b&&b.dataset.plant)},editZone(b){openZone(L.zones.get(b.dataset.id))},
   async delZone(){const z=editingZ;if(!z)return;if(openVisits().some(v=>v.z===z.id)){toast('Hay personas adentro. Registra su salida primero.');return}
     try{await del('zones',z.id);$('#dlgZone').close()}catch(e){}},
+  toggleOthers(){showOthers=!showOthers;alertSig='';checkAlerts()},
   newJob(){openJob()},newInsp(){openInsp()},
   async delJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
     try{for(const c of crewOf(j.id))await del('crew',c.id);await del('jobs',j.id);toast('Reparación "'+j.name+'" quitada de la lista. Sus registros siguen en la bitácora.')}catch(e){}},
@@ -1460,9 +1519,10 @@ const ACT={
   closeDlg(b){b.closest('dialog').close()},
   logMode(b){logMode=b.dataset.m;ls('ec.logmode',logMode);renderLog()},
   extendJob(b){const j=L.jobs.get(b.dataset.id);if(j)openExt(j)},
-  closeJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
+  async closeJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
     const pid=j.plant||plantOfZone(j.z),inside=openVisits().filter(v=>v.job===j.id||visitPlant(v)===pid);
     if(inside.length){toast('Aún hay '+inside.length+' persona(s) adentro de esta área. Registra su salida antes de cerrar la reparación.');return}
+    if(!await ask('¿Cerrar la reparación?','Vas a cerrar <b>'+esc(j.name)+'</b>. Se enviará su bitácora y <b>ya no se podrá abrir nuevamente</b>. '+(isAdmin()?'Si el trabajo sigue, usa <b>Extender</b> en lugar de cerrar.':'Si el trabajo sigue, no la cierres: pide al administrador que la extienda.'),'Sí, cerrar y enviar','Cancelar'))return;
     const rows=visits().filter(v=>v.job===j.id);
     (async()=>{try{for(const c of crewOf(j.id))await del('crew',c.id);await patch('jobs',j.id,{status:'closed',closedAt:Date.now()});toast('Reparación "'+j.name+'" cerrada.'+(rows.length?'':' No tenía registros que enviar.'))}catch(e){}
       if(rows.length)try{const f=await jobPdf(L.jobs.get(j.id)||j,j.id,rows);shareFile(f,'Bitácora de la reparación '+j.name,'Bitácora de la reparación '+j.name+' ('+jobDates(j)+'): '+rows.length+' registros, en PDF.')}catch(e){pdfFail()}})()},
@@ -1487,6 +1547,7 @@ document.addEventListener('click',e=>{
   const n=e.target.closest('nav button');if(n){setView(n.dataset.view);return}
   const b=e.target.closest('[data-act]');if(!b||!ACT[b.dataset.act])return;
   if(b.closest('summary'))e.preventDefault();
+  if(!isAdmin()&&BLOCK.has(b.dataset.act)){toast('Tu cuenta es de capturista: solo puede agregar. Para modificar o borrar, pide ayuda al administrador.');return}
   if(!armed(b))return;ACT[b.dataset.act](b)});
 document.addEventListener('change',async e=>{const s=e.target.closest('[data-reg]');if(!s)return;
   const v=L.visits.get(s.dataset.reg);if(!v)return;try{await patch('visits',v.id,{lim:+s.value,ack:0});toast('Régimen de '+v.wName+': '+regName(+s.value))}catch(x){}});
@@ -1528,8 +1589,12 @@ function fsPush(col,id){
   SYNC.pending++;syncUI();
   (row?ref.set(JSON.parse(JSON.stringify(row))):ref.delete()).then(
     ()=>{SYNC.pending--;SYNC.err='';SYNC.last=Date.now();syncUI()},
-    e=>{SYNC.pending--;SYNC.err=(e&&e.code)||'error';outboxAdd(col,id);syncUI()});
+    e=>{SYNC.pending--;
+      if(e&&e.code==='permission-denied'&&SYNC.user){SYNC.err='';ref.get().then(d=>setLocal(col,id,d.exists?{...d.data(),id}:null),()=>{});toast('Tu cuenta no tiene permiso para ese cambio. Se deshizo en esta tablet.');syncUI();return}
+      SYNC.err=(e&&e.code)||'error';outboxAdd(col,id);syncUI()});
 }
+async function setLocal(col,id,row){try{if(idb)await tx(col,'readwrite',t=>row?t.objectStore(col).put(row):t.objectStore(col).delete(id))}catch(e){}
+  if(row)L[col].set(id,row);else L[col].delete(id);renderAll()}
 async function onRemote(col,snap){
   let changed=false;
   for(const ch of snap.docChanges()){
@@ -1577,7 +1642,7 @@ function renderSyncDlg(){
     <div class="acts"><button type="button" class="btn" data-act="closeDlg">Cancelar</button><button type="submit" class="btn primary">Entrar</button></div></form>`;return}
   el.innerHTML=`<h2>Sincronización</h2>
     <dl class="dl"><dt>Estado</dt><dd><b>${esc(t)}</b></dd>
-    <dt>Cuenta</dt><dd>${esc(SYNC.user.email||'')}</dd>
+    <dt>Cuenta</dt><dd>${esc(SYNC.user.email||'')}<span class="rolebadge">${isAdmin()?'Administrador':'Capturista · solo agregar'}</span></dd>
     <dt>UID</dt><dd class="num">${esc(SYNC.user.uid)}</dd>
     <dt>Última sincronización</dt><dd class="num">${SYNC.last?fmtD(SYNC.last)+' '+fmtT(SYNC.last):'Aún no'}</dd>
     <dt>Cambios por subir</dt><dd class="num">${SYNC.pending+outbox().length}</dd></dl>
@@ -1594,7 +1659,7 @@ async function syncInit(){
     firebase.initializeApp(SYNC.cfg);SYNC.auth=firebase.auth();SYNC.fs=firebase.firestore();
     try{await SYNC.fs.enablePersistence({synchronizeTabs:true})}catch(e){}
   }catch(e){SYNC.err='sdk';SYNC.auth=null;syncUI();return}
-  SYNC.auth.onAuthStateChanged(u=>{SYNC.user=u||null;if(u)syncStart();else syncStop();syncUI();if($('#dlgSync').open)renderSyncDlg()});
+  SYNC.auth.onAuthStateChanged(u=>{SYNC.user=u||null;applyRole();renderAll();if(u)syncStart();else syncStop();syncUI();if($('#dlgSync').open)renderSyncDlg()});
 }
 addEventListener('online',syncUI);addEventListener('offline',syncUI);
 
@@ -1607,7 +1672,7 @@ addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
   const v=ls('ec.view');setView(VIEWS.includes(v)?v:'adentro');
   showResult(null);renderAll();tick();setInterval(tick,1000);netState();
   try{idb=await openDB();await loadAll()}catch(e){idb=null;$('#bLocal').hidden=false}
-  ready=true;renderAll();
+  ready=true;applyRole();renderAll();
   syncInit();
   setTimeout(()=>{if(navigator.onLine!==false)ensurePdfLib().catch(()=>{})},4000);
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}

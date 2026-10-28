@@ -128,9 +128,59 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 /* Alertas */
 .alerts{display:flex;flex-direction:column;gap:8px}
 .alertrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:12px 16px;border-radius:12px;border:2px solid var(--warn);background:var(--warn-soft);color:var(--warn)}
+.pc{border-top:1px solid var(--line);border-left:6px solid var(--safe);background:var(--surface);transition:background .2s}
+.pc[data-st="warn"]{border-left-color:var(--warn);background:linear-gradient(90deg,var(--warn-soft),var(--surface) 70%)}
+.pc[data-st="over"]{border-left-color:var(--danger);background:linear-gradient(90deg,var(--danger-soft),var(--surface) 70%)}
+.pc>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:9px 12px 7px}
+.pc>summary::-webkit-details-marker{display:none}
+.pc .pn{min-width:0}
+.pc .pn b{display:block;font-size:1rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .pn small{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden}
+.pc .pt{font-style:normal;font-weight:800;font-size:.7rem;width:18px;height:18px;border-radius:5px;display:inline-grid;place-items:center;background:var(--yellow);color:#1B1C1F}
+.pc .pt-C{background:#26282C;color:#fff}
+.pc .pt2{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+.pc .timer{font-family:var(--display);font-size:1.7rem;font-weight:700}
+.pc .stlabel{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--safe);margin-top:2px}
+.pc[data-st="warn"] .timer,.pc[data-st="warn"] .stlabel{color:var(--warn)}
+.pc[data-st="over"] .timer,.pc[data-st="over"] .stlabel{color:var(--danger)}
+.pc[data-st="over"]:not([open]) .timer{animation:blink 1s steps(2) infinite}
+.pc .bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:5px}
+.pc .bar i{display:block;height:100%;background:var(--safe);border-radius:3px}
+.pc[data-st="warn"] .bar i{background:var(--warn)}.pc[data-st="over"] .bar i{background:var(--danger)}
+.pc .pbody{padding:2px 12px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.pc .pinfo{font-size:.85rem;color:var(--muted)}
+.pc .pacts{display:flex;flex-wrap:wrap;gap:8px}
+.pc[open]>summary{padding-bottom:4px}
+@media (prefers-reduced-motion:reduce){.pc .timer{animation:none!important}}
+.stgrp{grid-column:1/-1}
+.stgrp>summary .pill{margin-left:auto;order:2}
+.stgrp>summary .muted{order:3;flex:1 1 100%;min-width:0;padding-left:22px}
+.stbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;padding:12px}
+.zcard{border:1px solid var(--line);border-top:6px solid var(--zc,#475569);border-radius:12px;overflow:hidden;background:var(--surface)}
+.zcard>header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;background:var(--surface-2)}
+.zcard>header b{display:block;font-family:var(--display);font-size:1.2rem;text-transform:uppercase;letter-spacing:.03em;line-height:1.1}
+.zcard>header small{color:var(--muted);font-size:.8rem}
+.zcard>header .cnt{font-family:var(--display);font-weight:700;font-size:1.4rem;background:var(--yellow);color:#1B1C1F;border-radius:8px;padding:2px 10px}
 .dept{display:flex;align-items:center;gap:8px;margin:6px 10px 2px;padding:4px 10px;border-left:6px solid var(--sc,#6B7280);background:var(--surface-2);border-radius:6px;font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 .dept span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
-.dchip{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--sc,#6B7280);color:#fff;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;margin-right:6px;vertical-align:1px}
+.deptbar{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+.dchips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.dbtn{flex:none;display:flex;align-items:center;gap:8px;padding:10px 14px;min-height:48px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font:inherit;font-weight:700;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;color:inherit}
+.dbtn i{width:12px;height:12px;border-radius:50%;background:var(--sc,#6B7280);flex:none}
+.dbtn small{font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)}
+.dbtn[aria-pressed="true"]{border-color:var(--sc,var(--yellow));background:var(--yellow);color:#1B1C1F}
+.dbtn[aria-pressed="true"] small{color:#3A3200}
+.filtnote{grid-column:1/-1;padding:10px 14px;border-radius:12px;background:var(--surface-2);color:var(--muted);font-size:.9rem}
+.cgrp{border:1px solid var(--line);border-left:6px solid var(--sc,#6B7280);border-radius:10px;overflow:hidden}
+.cgrp>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 12px;background:var(--surface-2)}
+.cgrp>summary::-webkit-details-marker{display:none}
+.cgrp>summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.cgrp[open]>summary::before{transform:rotate(90deg)}
+.cgrp>summary b{text-transform:uppercase;letter-spacing:.03em}
+.cgrp>summary span{font-size:.85rem;color:var(--muted)}
+.cgrp .crew{padding:8px 10px}
+.mem .where{display:block;font-size:.8rem;color:var(--muted)}
+.dchip{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--sc,#6B7280);color:#fff!important;font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;margin-right:6px;vertical-align:1px}
 .alertrow.others{border-style:dashed;border-color:var(--line);background:var(--surface-2);color:var(--muted);animation:none!important}
 .alertrow.muted{opacity:.7;animation:none!important}
 .watch{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted);font-weight:600}
@@ -434,11 +484,11 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
     <div class="head">
       <h2>Trabajando ahora</h2>
       <div class="tools">
-        <label class="watch" for="watchSel">Esta tablet vigila <select id="watchSel"></select></label>
         <button type="button" class="btn small" data-act="notifOn" id="notifBtn" hidden>Activar avisos del sistema</button>
         <button type="button" class="btn primary" data-act="goScan">Escanear casco</button>
       </div>
     </div>
+    <div class="deptbar"><span class="label">Departamento que vigila esta tablet</span><div class="dchips" id="deptChips"></div></div>
     <div class="board" id="board"></div>
     <div class="head"><h3 class="sub" id="restTitle">En descanso</h3></div>
     <div class="rests" id="rests"></div>
@@ -987,16 +1037,20 @@ function renderHeader(){
   $('#countT').textContent=over?`adentro · ${over} con tiempo excedido`:ov.length===1?'persona adentro':'personas adentro';
 }
 function regSelect(v){return `<select class="regsel" data-reg="${esc(v.id)}" aria-label="Régimen de ${esc(v.wName)}">${REGS.map(([m,t])=>`<option value="${m}" ${+visitLimit(v)===m?'selected':''}>Régimen: ${t}</option>`).join('')}</select>`}
+const openRows=new Set();
 function personRow(v){
-  const lim=visitLimit(v),st=status(v.in,lim),w=L.workers.get(v.w)||{name:v.wName};
-  return `<div class="prow" data-since="${v.in}" data-limit="${lim}" data-st="${st}">
-    ${avatar(w)}
-    <div class="who"><b>${esc(v.wName)}</b><span class="cow">${typeBadge(typeOf(v),'s')} ${esc(specOf(v)?specOf(v)+' · ':'')}${v.supName?'Sup. '+esc(v.supName)+' · ':''}entró <span class="num">${fmtHM(v.in)}</span></span></div>
-    <div class="timer num">${dur(Date.now()-v.in)}</div>
-    ${lim?`<div class="bar"><i style="width:${pct(v.in,lim).toFixed(1)}%"></i></div>`:''}
-    <div class="foot"><span class="pill"><span class="stlabel">${lim?ST[st]:'Sin límite'}</span></span>${regSelect(v)}
-      <button type="button" class="btn small" data-act="exit" data-id="${esc(v.id)}" data-confirm>Salida sin escanear</button></div>
-  </div>`}
+  const lim=visitLimit(v),st=status(v.in,lim),w=L.workers.get(v.w)||{name:v.wName},t=typeOf(v);
+  return `<details class="pc" data-vid="${esc(v.id)}" data-since="${v.in}" data-limit="${lim}" data-st="${st}" ${openRows.has(v.id)?'open':''}>
+    <summary>${avatar(w,'s')}
+      <span class="pn"><b>${esc(v.wName)}</b><small>${t?`<i class="pt pt-${t}">${t}</i>`:''}<span class="num">${fmtHM(v.in).replace(/\s?([ap])\.\s?m\./i,'$1m')}</span>${lim?' · '+lim+' min':''}</small></span>
+      <span class="pt2"><span class="timer num">${dur(Date.now()-v.in)}</span><span class="stlabel">${lim?ST[st]:'Sin límite'}</span></span>
+      ${lim?`<span class="bar"><i style="width:${pct(v.in,lim).toFixed(1)}%"></i></span>`:''}</summary>
+    <div class="pbody">
+      <div class="pinfo">${esc(specLabel(specOf(v)))} · ${t==='C'?'Contratista'+(v.wCo?' · '+esc(v.wCo):''):t==='P'?'Personal propio':''}${v.supName?' · Sup. '+esc(v.supName):''}<br>Entró a las <b class="num">${fmtT(v.in)}</b>${v.jobName?' · '+esc(v.jobName):''}</div>
+      <div class="pacts">${regSelect(v)}<button type="button" class="btn small" data-act="exit" data-id="${esc(v.id)}" data-confirm>Salida sin escanear</button></div>
+    </div>
+  </details>`}
+document.addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.pc'))return;if(d.open)openRows.add(d.dataset.vid);else openRows.delete(d.dataset.vid)},true);
 function areaCard(pid,vs){const p=L.plants.get(pid),j=jobForPlant(pid);
   const bySpace=new Map();for(const v of vs){if(!bySpace.has(v.z))bySpace.set(v.z,[]);bySpace.get(v.z).push(v)}
   const freeSp=p?spacesOf(pid).filter(z=>!bySpace.has(z.id)).map(z=>z.name):[];
@@ -1007,24 +1061,35 @@ function areaCard(pid,vs){const p=L.plants.get(pid),j=jobForPlant(pid);
       return `<div class="dept" style="--sc:${specColor(g.label)}">${esc(g.label)}<span>${g.vs.length} adentro (${P} P · ${g.vs.length-P} C)</span></div>${g.vs.map(personRow).join('')}`}).join('')}`}).join('')}
     ${freeSp.length?`<div class="free">Libres: ${esc(freeSp.join(', '))}</div>`:''}</section>`}
 function renderBoard(){
-  const el=$('#board'),ov=openVisits(),ps=plants();
+  renderWatch();
+  const el=$('#board'),allOv=openVisits(),ov=allOv.filter(inWatch),ps=plants(),hid=allOv.length-ov.length;
+  const fnote=hid?`<div class="filtnote">Viendo solo <b>${esc(watchName())}</b>. Hay ${hid} ${hid===1?'persona':'personas'} de otros departamentos adentro: toca <b>Todos</b> para verlas.</div>`:'';
   if(!ps.length&&!ov.length){el.innerHTML=`<div class="empty panel" style="grid-column:1/-1">${ready?'Aún no hay plantas registradas. Entra a <b>Plantas</b>, agrega tu planta con sus áreas y espacios confinados, y registra a tu gente en <b>Personal</b>.':'Cargando…'}</div>`;return}
-  const bySite=new Map();
-  for(const v of ov){const sid=visitSite(v)||'?',pid=visitPlant(v)||'?';if(!bySite.has(sid))bySite.set(sid,new Map());const m=bySite.get(sid);if(!m.has(pid))m.set(pid,[]);m.get(pid).push(v)}
-  if(!bySite.size){el.innerHTML=`<div class="idle" style="grid-column:1/-1">Nadie trabajando en espacios confinados en este momento. Todas las áreas están libres.</div>`;return}
-  const activeAreas=new Set(ov.map(visitPlant)),idle=ps.filter(p=>!activeAreas.has(p.id)).length;
-  el.innerHTML=[...bySite.entries()].map(([sid,areas])=>{const st=L.sites.get(sid),n=[...areas.values()].reduce((a,b)=>a+b.length,0);
-    return `<div class="sitehead">${esc(st?st.name:([...areas.values()][0][0].sName||'Sin planta'))} · ${n} adentro</div>`+[...areas.entries()].map(([pid,vs])=>areaCard(pid,vs)).join('')}).join('')
-    +(idle?`<div class="idle" style="grid-column:1/-1">${idle} ${idle===1?'área más sin actividad':'áreas más sin actividad'}.</div>`:'');
+  if(!ov.length){el.innerHTML=fnote+`<div class="idle" style="grid-column:1/-1">${watch==='all'?'Nadie trabajando en espacios confinados en este momento. Todas las áreas están libres.':'Nadie de '+esc(watchName())+' adentro en este momento.'}</div>`;return}
+  const gs=deptGroups(ov),openK=gs.length===1?(specKey(gs[0].label)||'-'):stOpen;
+  el.innerHTML=fnote+gs.map(g=>{const k=specKey(g.label)||'-',P=new Set(g.vs.filter(v=>typeOf(v)==='P').map(v=>v.w)).size,n=g.vs.length;
+    const exc=g.vs.filter(v=>status(v.in,visitLimit(v))==='over').length,warn=g.vs.filter(v=>status(v.in,visitLimit(v))==='warn').length,rs=restsNow().filter(v=>deptKey(v)===k).length;
+    const byZ=new Map();for(const v of [...g.vs].sort((a,b)=>a.in-b.in)){const zk=visitPlant(v)+'|'+v.z;if(!byZ.has(zk))byZ.set(zk,[]);byZ.get(zk).push(v)}
+    return `<details class="specgrp stgrp" data-d="${esc(k)}" style="--sc:${specColor(g.label)}" ${openK===k?'open':''} ${gs.length===1?'data-auto="1"':''}>
+      <summary><b>${esc(g.label)}</b><span class="muted">${n} adentro (${P} P · ${n-P} C)${rs?' · '+rs+' en descanso':''} · toca para ver</span>
+        ${exc?`<span class="pill over">${exc} excedido${exc>1?'s':''}</span>`:warn?`<span class="pill warn">${warn} cerca del límite</span>`:'<span class="pill in">En tiempo</span>'}</summary>
+      <div class="stbody">${[...byZ.values()].map(zv=>{const v0=zv[0],p=L.plants.get(visitPlant(v0)),z=L.zones.get(v0.z),st=p&&L.sites.get(p.site),j=p&&jobForPlant(p.id);
+        return `<section class="zcard" style="--zc:${pColorOf(p)}"><header>${p?pTag(p):''}<div><b>${esc(z?z.name:v0.zName)}</b><small>${esc([st&&st.name,p?p.name:v0.pName].filter(Boolean).join(' › '))}${j?' · '+esc(j.name):''}</small></div><span class="cnt num">${zv.length}</span></header>${zv.map(personRow).join('')}</section>`}).join('')}</div>
+    </details>`}).join('');
 }
+let stOpen='';
+document.addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.stgrp'))return;
+  if(d.open&&d.dataset.auto)return;
+  if(d.open){stOpen=d.dataset.d;document.querySelectorAll('details.stgrp[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}
+  else if(stOpen===d.dataset.d)stOpen=''},true);
 function renderRests(){
-  const rs=restsNow(),el=$('#rests'),now=Date.now();
-  $('#restTitle').textContent='En descanso'+(rs.length?' ('+rs.length+')':'');
-  if(!rs.length){el.innerHTML='<div class="idle" style="grid-column:1/-1">Nadie en descanso. Al escanear una salida, la persona aparece aquí con su cuenta regresiva.</div>';return}
-  el.innerHTML=rs.map(v=>{const w=L.workers.get(v.w)||{name:v.wName},done=now>=v.restEnd;
+  const allRs=restsNow(),rs=allRs.filter(inWatch),el=$('#rests'),now=Date.now(),hidR=allRs.length-rs.length;
+  $('#restTitle').textContent='En descanso'+(watch!=='all'?' · '+watchName():'')+(rs.length?' ('+rs.length+')':'');
+  if(!rs.length){el.innerHTML=(hidR?`<div class="filtnote">${hidR} en descanso de otros departamentos.</div>`:'')+'<div class="idle" style="grid-column:1/-1">'+(watch==='all'?'Nadie en descanso. Al escanear una salida, la persona aparece aquí con su cuenta regresiva.':'Nadie de '+esc(watchName())+' en descanso.')+'</div>';return}
+  el.innerHTML=(hidR?`<div class="filtnote">${hidR} en descanso de otros departamentos (toca Todos para verlos).</div>`:'')+rs.map(v=>{const w=L.workers.get(v.w)||{name:v.wName},done=now>=v.restEnd;
     return `<div class="rrow ${done?'ready':''}" data-until="${v.restEnd}">
       ${avatar(w)}
-      <div class="who"><b>${esc(v.wName)}</b><span>Salió de ${esc(placeText(v))} a las ${fmtHM(v.out)} · puede volver a las ${fmtHM(v.restEnd)}</span></div>
+      <div class="who"><b>${esc(v.wName)}</b><span>${dchip(specLabel(specOf(v)))}Salió de ${esc(placeText(v))} a las ${fmtHM(v.out)} · puede volver a las ${fmtHM(v.restEnd)}</span></div>
       <div class="left num">${done?'LISTO PARA ENTRAR':dur(v.restEnd-now)}</div>
       <div class="foot"><button type="button" class="btn small" data-act="restEnd" data-id="${esc(v.id)}" data-confirm>Quitar de descanso</button></div></div>`}).join('');
 }
@@ -1063,6 +1128,16 @@ function jobPill(j){if(isInsp(j)&&j.status!=='closed')return '<span class="pill 
   const n=daysLeft(j);if(n<0)return `<span class="pill over">VENCIDA desde el ${fmtDay(j.end)}</span>`;
   return `<span class="pill ${n<=1?'warn':'in'}">${n===0?'Vence hoy':n===1?'Vence mañana':'Faltan '+n+' días'}</span>`}
 function jobPlace(j){const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid);return `<span class="zline">${p?pTag(p,1):''}${esc((p&&L.sites.get(p.site)?L.sites.get(p.site).name+' › ':'')+(p?p.name:j.pName||'Área eliminada'))}</span>`}
+const crewOpen=new Set();
+function crewGroups(j,cr,pid){const m=new Map();
+  for(const c of cr){const w=L.workers.get(c.w)||{name:c.name};const k=specKey(w.spec)||'-';if(!m.has(k))m.set(k,{label:specLabel(w.spec),cs:[]});m.get(k).cs.push({c,w})}
+  return [...m.entries()].sort((a,b)=>a[1].label.localeCompare(b[1].label,'es')).map(([k,g])=>{
+    const st=g.cs.map(x=>memberStatus(x.c.w,pid)[0]),nin=st.filter(x=>x==='in').length,nr=st.filter(x=>x==='rest').length,P=g.cs.filter(x=>x.w.type==='P').length,gid=j.id+'|'+k;
+    return `<details class="cgrp" data-g="${esc(gid)}" style="--sc:${specColor(g.label)}" ${crewOpen.has(gid)?'open':''}><summary><b>${esc(g.label)}</b><span>${g.cs.length} ${g.cs.length===1?'persona':'personas'} (${P} P · ${g.cs.length-P} C)${nin?' · <b style="color:var(--safe)">'+nin+' adentro</b>':''}${nr?' · '+nr+' en descanso':''} · toca para ver</span></summary>
+      <div class="crew">${g.cs.map(({c,w})=>{const [cls,t]=memberStatus(c.w,pid);
+        return `<div class="mem">${avatar(w,'s')}<div><b>${esc(w.name||c.name)}</b><span class="pill ${cls}">${esc(t)}</span></div>
+          <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')}</div></details>`}).join('')}
+document.addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.cgrp'))return;if(d.open)crewOpen.add(d.dataset.g);else crewOpen.delete(d.dataset.g)},true);
 function renderJobs(){
   autoCloseInsp();const js=jobs(),cl=closedJobs(),el=$('#jobs');
   let h='';
@@ -1075,10 +1150,7 @@ function renderJobs(){
       ${x?'<div class="alert" style="background:var(--danger-soft);color:var(--danger)">Esta reparación ya venció. Extiéndela si sigue el trabajo o ciérrala para enviar su bitácora.</div>':''}
       <div class="label">${cr.length} ${cr.length===1?'persona registrada':'personas registradas'} en esta reparación${(()=>{const n=cr.filter(c=>openVisits().some(v=>v.w===c.w&&visitPlant(v)===pid)).length;return n?' · '+n+' adentro aquí ahora':''})()}</div>
       ${jobStarted(j)?'':'<p class="muted">Aún no empieza: las entradas en esta área no se suman hasta la fecha de inicio.</p>'}
-      <div class="crew">${cr.length?cr.map(c=>{const w=L.workers.get(c.w)||{name:c.name},[cls,t]=memberStatus(c.w,pid);
-        return `<div class="mem">${avatar(w,'s')}<div><b>${esc(w.name||c.name)}</b><span class="pill ${cls}">${esc(t)}</span></div>
-          <button type="button" class="btn small x" data-act="delCrew" data-id="${esc(c.id)}" data-confirm>Quitar</button></div>`}).join('')
-        :'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta área.</p>'}</div>
+      ${cr.length?crewGroups(j,cr,pid):'<p class="muted">Aún nadie. Se agregan solos al escanear su entrada en esta área.</p>'}
       <div class="tools"><button type="button" class="btn ${x?'primary':''}" data-act="extendJob" data-id="${esc(j.id)}">${j.end?'Extender o cambiar fechas':'Poner fechas'}</button>
         <button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}">Cerrar y enviar bitácora</button></div>
     </section>`}).join('');
@@ -1404,11 +1476,18 @@ document.addEventListener('submit',async e=>{const fm=e.target;if(isAdmin()||!AD
   e.preventDefault();e.stopImmediatePropagation();
   const ok=await ask('⚠ Revisa antes de guardar','Tu cuenta es de <b>capturista</b>: una vez guardado <b>no podrás modificarlo ni borrarlo</b>. Solo el administrador puede hacerlo.<br><br>¿Los datos están correctos?','Sí, guardar','Revisar otra vez');
   if(ok){fm.dataset.ok='1';try{fm.requestSubmit()}finally{delete fm.dataset.ok}}},true);
-$('#watchSel').addEventListener('change',e=>{watch=e.target.value;ls('ec.watch',watch);showOthers=false;alertSig='';checkAlerts();toast(watch==='all'?'Esta tablet vigila a todos los departamentos.':'Esta tablet solo hace sonar las alertas de '+e.target.selectedOptions[0].textContent+'.')});
-function renderWatch(){const m=new Map();for(const w of workers()){const k=specKey(w.spec);if(k&&!m.has(k))m.set(k,specLabel(w.spec))}
-  const opts=[['all','Todos los departamentos']].concat([...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'es')));
-  if(watch!=='all'&&!m.has(watch))opts.push([watch,watch]);
-  const h=opts.map(([k,l])=>`<option value="${esc(k)}" ${k===watch?'selected':''}>${esc(l)}</option>`).join('');if($('#watchSel').innerHTML!==h)$('#watchSel').innerHTML=h}
+function deptList(){const m=new Map();for(const w of workers()){const k=specKey(w.spec);if(k&&!m.has(k))m.set(k,specLabel(w.spec))}
+  for(const v of openVisits()){const k=deptKey(v);if(k!=='-'&&!m.has(k))m.set(k,specLabel(specOf(v)))}
+  return [...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'es'))}
+function renderWatch(){const ov=openVisits(),rs=restsNow(),ds=deptList();
+  if(watch!=='all'&&!ds.some(([k])=>k===watch))ds.push([watch,watch]);
+  const cnt=k=>ov.filter(v=>k==='all'||deptKey(v)===k).length,rc=k=>rs.filter(v=>k==='all'||deptKey(v)===k).length;
+  const lab=(k)=>{const n=cnt(k),r=rc(k);return n||r?`<small>${n} adentro${r?' · '+r+' desc.':''}</small>`:'<small>nadie</small>'};
+  const h=`<button type="button" class="dbtn" data-act="pickWatch" data-k="all" aria-pressed="${watch==='all'}">Todos ${lab('all')}</button>`
+    +ds.map(([k,l])=>`<button type="button" class="dbtn" style="--sc:${specColor(l)}" data-act="pickWatch" data-k="${esc(k)}" aria-pressed="${watch===k}"><i></i>${esc(l)} ${lab(k)}</button>`).join('');
+  if($('#deptChips').innerHTML!==h)$('#deptChips').innerHTML=h}
+const inWatch=v=>watch==='all'||deptKey(v)===watch;
+const watchName=()=>{const d=deptList().find(([k])=>k===watch);return d?d[1]:watch};
 
 /* ---------- inspección rápida ---------- */
 let inspBusy=false;
@@ -1488,6 +1567,8 @@ const ACT={
   async delZone(){const z=editingZ;if(!z)return;if(openVisits().some(v=>v.z===z.id)){toast('Hay personas adentro. Registra su salida primero.');return}
     try{await del('zones',z.id);$('#dlgZone').close()}catch(e){}},
   toggleOthers(){showOthers=!showOthers;alertSig='';checkAlerts()},
+  pickWatch(b){watch=b.dataset.k;ls('ec.watch',watch);showOthers=false;alertSig='';renderBoard();renderRests();checkAlerts();renderWatch();
+    toast(watch==='all'?'Viendo a todos los departamentos.':'Viendo solo '+watchName()+'. Las alarmas de otros departamentos no suenan en esta tablet.')},
   newJob(){openJob()},newInsp(){openInsp()},
   async delJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
     try{for(const c of crewOf(j.id))await del('crew',c.id);await del('jobs',j.id);toast('Reparación "'+j.name+'" quitada de la lista. Sus registros siguen en la bitácora.')}catch(e){}},

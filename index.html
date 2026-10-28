@@ -206,6 +206,9 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 .chip[aria-pressed="true"]{background:var(--yellow);border-color:var(--yellow);color:var(--yellow-ink)}
 .chip[aria-pressed="true"] small{color:var(--yellow-ink)}
 .jobnote{padding:10px 12px;border-radius:10px;background:var(--surface-2);font-size:.95rem}
+.pill.insp{background:#EDE4FF;color:#5B2BB5;font-weight:700;letter-spacing:.04em}
+.jobnote .acts2{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.jobnote.warn{background:#FBE3E1;color:#7A1414;border:1px solid #E7A6A0}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field input,.field select{min-height:48px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);width:100%}
 .inline{display:flex;gap:8px}
@@ -627,6 +630,23 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
   </form>
 </dialog>
 
+<dialog id="dlgInsp">
+  <form class="dlg" id="iForm">
+    <h2>Inspección rápida</h2>
+    <p class="muted">Para entrar sin una reparación: inspección, emergencia o medición. Dura <b>solo hoy</b> y se cierra sola a medianoche.</p>
+    <div class="field"><label class="label" for="iPlant">Área</label><select id="iPlant" required></select></div>
+    <div class="field"><label class="label" for="iMot">Motivo</label>
+      <select id="iMot" required><option>Inspección</option><option>Emergencia o rescate</option><option>Medición de gases</option><option value="otro">Otro…</option></select></div>
+    <div class="field" id="iOtroBox" hidden><label class="label" for="iOtro">Escribe el motivo</label><input id="iOtro" maxlength="50" placeholder="Ej. Revisión de válvula"></div>
+    <div class="field"><label class="label" for="iSup">Supervisor que autoriza</label><select id="iSup" required></select></div>
+    <p class="muted" id="iNoSup" hidden>No hay supervisores registrados. En <b>Personal</b>, edita a una persona y marca <b>Esta persona es supervisor</b>.</p>
+    <div class="acts">
+      <button type="button" class="btn" data-act="closeDlg">Cancelar</button>
+      <button type="submit" class="btn primary">Iniciar inspección</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlgExt">
   <form class="dlg" id="xForm">
     <h2>Fechas de la reparación</h2>
@@ -707,7 +727,9 @@ const plusDays=(k,n)=>dayKey(new Date(k+'T12:00').getTime()+n*864e5);
 const plantOfZone=zid=>{const z=L.zones.get(zid);return z?z.plant:''};
 // Solo cuenta una reparación que ya empezó (fecha de inicio de hoy o antes)
 const jobStarted=j=>!!j&&(!j.start||j.start<=dayKey(Date.now()));
-const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid&&jobStarted(j)):null;
+const isInsp=j=>!!(j&&j.kind==='insp');
+const inspOver=j=>isInsp(j)&&j.end<dayKey(Date.now());
+const jobForPlant=pid=>pid?jobs().find(j=>(j.plant||plantOfZone(j.z))===pid&&jobStarted(j)&&!inspOver(j)):null;
 const crewOf=jid=>[...L.crew.values()].filter(c=>c.job===jid).sort((a,b)=>a.at-b.at);
 const visitLimit=v=>v.lim!=null?+v.lim||0:(+((L.workers.get(v.w)||{}).limitMin)||+((L.zones.get(v.z)||{}).limitMin)||0);
 const visitPlant=v=>v.p||plantOfZone(v.z);
@@ -826,6 +848,8 @@ async function toggle(w,via){
   if(open){const r=await closeVisit(open,via);return {kind:'out',w,v:open,t:r.t,d:r.t-open.in,lim:visitLimit(open),rest:r.rest,restEnd:r.restEnd}}
   const z=L.zones.get(selZone),p=z&&L.plants.get(z.plant);
   if(!z||!p)return {kind:'err',title:'Elige el espacio',msg:'La clave de '+w.name+' es correcta. Toca primero la planta, el área y el espacio confinado donde va a entrar (pasos 1, 2 y 3) y vuelve a escanear.'};
+  if(!jobForPlant(p.id)){const fut=jobs().find(j=>(j.plant||plantOfZone(j.z))===p.id&&!jobStarted(j));
+    return {kind:'err',title:'Sin reparación activa',msg:'No hay una reparación activa en '+p.name+(fut?' (la reparación '+fut.name+' empieza el '+fmtDay(fut.start)+')':'')+'. Crea o inicia una en Reparaciones y vuelve a escanear el casco de '+w.name+'.'}}
   if(certExpired(w))return {kind:'err',title:'Acceso bloqueado',msg:w.name+' tiene vencida su capacitación de espacios confinados (venció el '+w.cert+'). No puede entrar hasta renovarla y actualizar la fecha en Personal.'};
   if(bpBlocked(w))return {kind:'err',title:'Acceso bloqueado',msg:w.name+' está como NO APTO en su chequeo de presión arterial (carnet médico). No puede entrar hasta tener un chequeo apto y actualizarlo en Personal.'};
   const rest=activeRestOf(w.id);let restWarn='';
@@ -986,22 +1010,23 @@ function renderScanSetup(){
     return `<button type="button" class="chip" data-act="pickZone" data-id="${esc(z.id)}" aria-pressed="${z.id===selZone}">${esc(z.name)}${n?`<small>${n} adentro</small>`:''}</button>`}).join('')
     :'<div class="muted">Esta área no tiene espacios confinados. Agrégalos en <b>Plantas</b>.</div>';
   const p=L.plants.get(selPlant),j=p&&jobForPlant(p.id);
+  $('#jobNote').classList.toggle('warn',!!p&&!j);
   $('#jobNote').innerHTML=!p?'':j?`Las entradas en <b>${esc(p.name)}</b> se suman a la reparación <b>${esc(j.name)}</b>.`
-    :`<b>${esc(p.name)}</b> no tiene reparación activa. <button type="button" class="linkbtn" data-act="newJob">Crear una</button>`;
+    :`⚠ <b>${esc(p.name)}</b> no tiene reparación activa: <b>no se pueden registrar entradas</b>.<div class="acts2"><button type="button" class="btn small" data-act="newJob">Crear reparación</button><button type="button" class="btn small primary" data-act="newInsp">🔍 Inspección rápida</button></div>`;
   $('#regChips').innerHTML=REGS.map(([m,t])=>`<button type="button" class="chip" data-act="pickReg" data-m="${m}" aria-pressed="${selReg===m}">${t}</button>`).join('');
   $('#restChips').innerHTML=RESTS.map(([m,t])=>`<button type="button" class="chip" data-act="pickRest" data-m="${m}" aria-pressed="${selRest===m}">${t}</button>`).join('');
 }
 function memberStatus(wid,pid){const v=openVisits().find(o=>o.w===wid);if(v)return visitPlant(v)===pid?['in','Adentro aquí · '+v.zName]:['warn','Trabajando en otra área · '+placeText(v)];
   return activeRestOf(wid)?['rest','En descanso']:['','Afuera']}
 function jobDates(j){const st=j.start||(j.createdAt?dayKey(j.createdAt):'');return `${st?fmtDay(st):'—'} → ${j.end?fmtDay(j.end):'sin fecha de terminación'}`}
-function jobPill(j){if(j.status==='closed')return '<span class="pill">Cerrada</span>';
+function jobPill(j){if(isInsp(j)&&j.status!=='closed')return '<span class="pill insp">INSPECCIÓN</span>'+(j.authName?'<span class="muted">Autorizó: '+esc(j.authName)+'</span>':'');if(j.status==='closed')return '<span class="pill">Cerrada</span>';
   if(!jobStarted(j))return `<span class="pill">Programada · inicia el ${fmtDay(j.start)}</span>`;
   if(!j.end)return '<span class="pill warn">Falta fecha de terminación</span>';
   const n=daysLeft(j);if(n<0)return `<span class="pill over">VENCIDA desde el ${fmtDay(j.end)}</span>`;
   return `<span class="pill ${n<=1?'warn':'in'}">${n===0?'Vence hoy':n===1?'Vence mañana':'Faltan '+n+' días'}</span>`}
 function jobPlace(j){const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid);return `<span class="zline">${p?pTag(p,1):''}${esc((p&&L.sites.get(p.site)?L.sites.get(p.site).name+' › ':'')+(p?p.name:j.pName||'Área eliminada'))}</span>`}
 function renderJobs(){
-  const js=jobs(),cl=closedJobs(),el=$('#jobs');
+  autoCloseInsp();const js=jobs(),cl=closedJobs(),el=$('#jobs');
   let h='';
   if(!js.length)h=`<div class="empty panel" style="grid-column:1/-1">${ready?'No hay reparaciones activas. Toca <b>Nueva reparación</b>, elige el área y sus fechas; todos los que escaneen su entrada en esa área quedarán registrados en ella.':'Cargando…'}</div>`;
   h+=js.map(j=>{const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid),cr=crewOf(j.id),sp=p?spacesOf(pid).map(z=>z.name):[],x=jobExpired(j);
@@ -1163,7 +1188,7 @@ async function pdfFor(rows,o){
 }
 function jobInfo(j,k,rows){if(!j)return {title:k?'Reparación: '+((rows[0]&&rows[0].jobName)||'eliminada'):'Entradas sin reparación',lines:[k?'':'Entradas en áreas que no tenían una reparación activa.']};
   const pid=j.plant||plantOfZone(j.z),p=L.plants.get(pid),st=p&&L.sites.get(p.site);
-  return {title:'Reparación: '+j.name,lines:['Planta / área: '+[st&&st.name,p?p.name:j.pName].filter(Boolean).join(' · '),'Fechas: '+jobDates(j)+(j.status==='closed'?' · Cerrada el '+fmtD(j.closedAt||Date.now()):jobExpired(j)?' · VENCIDA':'')]}}
+  return {title:'Reparación: '+j.name,lines:['Planta / área: '+[st&&st.name,p?p.name:j.pName].filter(Boolean).join(' · '),'Fechas: '+jobDates(j)+(j.status==='closed'?' · Cerrada el '+fmtD(j.closedAt||Date.now()):jobExpired(j)?' · VENCIDA':'')].concat(isInsp(j)?['Tipo: INSPECCIÓN RÁPIDA · Motivo: '+(j.motivo||'')+' · Autorizó: '+(j.authName||'')]:[])}}
 async function jobPdf(j,k,rows){const name=j?j.name:(rows[0]&&rows[0].jobName)||'sin-reparacion',info=jobInfo(j,k,rows);
   return pdfFor(rows,{...info,job:true,fname:'bitacora-reparacion-'+slug(name)+'-'+dayKey(Date.now())+'.pdf'})}
 async function viewPdf(){const d=$('#logDate').value,what=d?'del '+fmtD(new Date(d+'T12:00').getTime()):'completa';
@@ -1327,6 +1352,27 @@ $('#jForm').addEventListener('submit',async e=>{e.preventDefault();
     for(const v of openVisits().filter(v=>visitPlant(v)===p.id))await put('crew',id+'-'+v.w,{job:id,w:v.w,name:v.wName,at:Date.now()});
     $('#dlgJob').close();toast('Reparación creada. Quien escanee su entrada en '+p.name+' quedará activo en ella.')}catch(x){}});
 
+/* ---------- inspección rápida ---------- */
+let inspBusy=false;
+async function autoCloseInsp(){if(inspBusy)return;const xs=jobs().filter(j=>inspOver(j)&&!openVisits().some(v=>visitPlant(v)===(j.plant||plantOfZone(j.z))));
+  if(!xs.length)return;inspBusy=true;try{for(const j of xs){for(const c of crewOf(j.id))await del('crew',c.id);await patch('jobs',j.id,{status:'closed',closedAt:Date.now(),autoClosed:true})}}catch(e){}inspBusy=false}
+function openInsp(){const ps=plants();if(!ps.length){toast('Primero agrega un área.');return}
+  $('#iPlant').innerHTML=ps.map(p=>{const x=L.sites.get(p.site);return `<option value="${esc(p.id)}">${esc((x?x.name+' › ':'')+p.code+' · '+p.name)}</option>`}).join('');
+  if(ps.some(p=>p.id===selPlant))$('#iPlant').value=selPlant;
+  $('#iMot').value='Inspección';$('#iOtro').value='';$('#iOtroBox').hidden=true;
+  const sups=workers().filter(w=>w.isSup);$('#iSup').innerHTML='<option value="">Elige al supervisor</option>'+sups.map(w=>`<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('');
+  $('#iNoSup').hidden=!!sups.length;$('#dlgInsp').showModal()}
+$('#iMot').addEventListener('change',()=>{$('#iOtroBox').hidden=$('#iMot').value!=='otro';if(!$('#iOtroBox').hidden)$('#iOtro').focus()});
+$('#iForm').addEventListener('submit',async e=>{e.preventDefault();
+  const p=L.plants.get($('#iPlant').value),sup=L.workers.get($('#iSup').value);
+  let mot=$('#iMot').value==='otro'?$('#iOtro').value.trim():$('#iMot').value;
+  if(!p)return;if(!mot){toast('Escribe el motivo de la inspección.');return}
+  if(!sup){toast('Elige al supervisor que autoriza la inspección.');return}
+  if(jobForPlant(p.id)){toast(p.name+' ya tiene una reparación activa: las entradas se registran en ella.');$('#dlgInsp').close();return}
+  const today=dayKey(Date.now());
+  try{const id=uid('j');await put('jobs',id,{name:'INSPECCIÓN – '+mot,kind:'insp',motivo:mot,auth:sup.id,authName:sup.name,plant:p.id,pName:p.name,start:today,end:today,status:'open',createdAt:Date.now()});
+    $('#dlgInsp').close();toast('Inspección iniciada en '+p.name+'. Autorizó '+sup.name+'. Ya puedes escanear los cascos.')}catch(x){}});
+
 /* ---------- cámara en vivo ---------- */
 const scanCv=document.createElement('canvas');let lastTry=0;
 async function camStart(){
@@ -1383,7 +1429,7 @@ const ACT={
   newZone(b){openZone(null,b&&b.dataset.plant)},editZone(b){openZone(L.zones.get(b.dataset.id))},
   async delZone(){const z=editingZ;if(!z)return;if(openVisits().some(v=>v.z===z.id)){toast('Hay personas adentro. Registra su salida primero.');return}
     try{await del('zones',z.id);$('#dlgZone').close()}catch(e){}},
-  newJob(){openJob()},
+  newJob(){openJob()},newInsp(){openInsp()},
   async delJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
     try{for(const c of crewOf(j.id))await del('crew',c.id);await del('jobs',j.id);toast('Reparación "'+j.name+'" quitada de la lista. Sus registros siguen en la bitácora.')}catch(e){}},
   async delCrew(b){try{await del('crew',b.dataset.id)}catch(e){}},

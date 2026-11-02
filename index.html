@@ -832,6 +832,7 @@ function specColor(n){const k=specKey(n);if(!k)return '#6B7280';if(SPEC_COLORS[k
 const specLabel=n=>String(n||'').trim()||'Sin especialidad';
 const specOf=v=>v.wSpec||((L.workers.get(v.w)||{}).spec)||'';
 const deptKey=v=>specKey(specOf(v))||'-';
+const hh=ms=>(ms/3600000).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
 function deptGroups(vs){const m=new Map();for(const v of vs){const k=deptKey(v);if(!m.has(k))m.set(k,{label:specLabel(specOf(v)),vs:[]});m.get(k).vs.push(v)}
   return [...m.values()].sort((a,b)=>a.label.localeCompare(b.label,'es'))}
 function deptStats(vs){return deptGroups(vs).map(g=>{const ws=new Set(g.vs.map(v=>v.w));const P=[...ws].filter(id=>{const v=g.vs.find(x=>x.w===id);return typeOf(v)==='P'}).length;
@@ -1257,8 +1258,8 @@ function renderLog(){
     return `<section class="panel jgroup"><header><div><h3>${esc(j?j.name:k?(vs[0].jobName||'Reparación eliminada'):'Sin reparación')}</h3>
         ${j?`<div class="muted">${jobPlace(j)}</div><div class="jobdates"><span class="num">${jobDates(j)}</span>${jobPill(j)}</div>`:k?'':'<div class="muted">Entradas en áreas que no tenían una reparación activa.</div>'}</div>
         <button type="button" class="btn small primary" data-act="sendJobLog" data-id="${esc(k)}">Enviar bitácora</button></header>
-      <div class="jsum"><div><b class="num">${ppl}</b><span>personas</span></div><div><b class="num">${vs.length}</b><span>ingresos</span></div><div><b class="num">${dur(tot)}</b><span>tiempo total adentro</span></div><div><b class="num" style="${exc?'color:var(--danger)':''}">${exc}</b><span>excedieron su tiempo</span></div>${ins?`<div><b class="num" style="color:var(--safe)">${ins}</b><span>adentro ahora</span></div>`:''}</div>
-      <div class="jdept">${deptStats(vs).map(d=>`<div style="--sc:${specColor(d.label)}"><b>${esc(d.label)}</b> · ${d.ppl} ${d.ppl===1?'persona':'personas'} (${d.P} P · ${d.C} C) · ${d.n} ingresos · <span class="num">${dur(d.tot)}</span>${d.exc?` · <b style="color:var(--danger)">${d.exc} excedieron</b>`:''}${d.ins?` · <b style="color:var(--safe)">${d.ins} adentro</b>`:''}</div>`).join('')}</div>
+      <div class="jsum"><div><b class="num">${ppl}</b><span>personas</span></div><div><b class="num">${vs.length}</b><span>ingresos</span></div><div><b class="num">${hh(tot)}</b><span>horas hombre trabajadas</span></div><div><b class="num" style="${exc?'color:var(--danger)':''}">${exc}</b><span>excedieron su tiempo</span></div>${ins?`<div><b class="num" style="color:var(--safe)">${ins}</b><span>adentro ahora</span></div>`:''}</div>
+      <div class="jdept">${deptStats(vs).map(d=>`<div style="--sc:${specColor(d.label)}"><b>${esc(d.label)}</b> · ${d.ppl} ${d.ppl===1?'persona':'personas'} (${d.P} P · ${d.C} C) · ${d.n} ingresos · <span class="num">${hh(d.tot)} HH</span>${d.exc?` · <b style="color:var(--danger)">${d.exc} excedieron</b>`:''}${d.ins?` · <b style="color:var(--safe)">${d.ins} adentro</b>`:''}</div>`).join('')}</div>
       <details><summary>Ver los ${vs.length} registros</summary><div class="tablewrap">${tableHtml(vs)}</div></details></section>`}).join('')}</div>`;
 }
 function csvFor(rows,fname){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
@@ -1300,13 +1301,13 @@ async function pdfFor(rows,o){
     for(const c of cols){page.drawText(fit(c[0],B,7.5,c[1]-6),{x:x+3,y:y-9,size:7.5,font:B,color:ink});x+=c[1]}y-=16};
   head();
   for(const l of (o.lines||[])){page.drawText(fit(l,F,9.5,W-2*M),{x:M,y,size:9.5,font:F,color:ink});y-=14}
-  const boxes=[[String(ppl),'personas'],[String(rows.length),'ingresos'],[dur(tot),'tiempo total adentro'],[String(exc),'excedieron su tiempo']];
+  const boxes=[[String(ppl),'personas'],[String(rows.length),'ingresos'],[hh(tot)+' HH','horas hombre trabajadas'],[String(exc),'excedieron su tiempo']];
   let bx=M;y-=4;for(const [a,b2] of boxes){page.drawRectangle({x:bx,y:y-32,width:150,height:34,color:zeb,borderColor:lin,borderWidth:.6});
     page.drawText(pdfSafe(a),{x:bx+8,y:y-15,size:13,font:B,color:b2.startsWith('exced')&&exc?red:ink});page.drawText(pdfSafe(b2),{x:bx+8,y:y-27,size:7.5,font:F,color:mut});bx+=158}
   y-=46;
   const ds=deptStats(rows);if(ds.length){page.drawText(pdfSafe('POR ESPECIALIDAD'),{x:M,y,size:8.5,font:B,color:ink});y-=12;
     for(const d of ds){const c=specColor(d.label),hx=parseInt(c.slice(1),16);page.drawRectangle({x:M,y:y-2,width:4,height:10,color:rgb((hx>>16&255)/255,(hx>>8&255)/255,(hx&255)/255)});
-      page.drawText(fit(d.label.toUpperCase()+' — '+d.ppl+(d.ppl===1?' persona':' personas')+' ('+d.P+' P · '+d.C+' C) · '+d.n+' ingresos · tiempo '+dur(d.tot)+' · '+d.exc+' excedieron',F,8.5,W-2*M-10),{x:M+9,y,size:8.5,font:F,color:ink});y-=12}y-=6}
+      page.drawText(fit(d.label.toUpperCase()+' — '+d.ppl+(d.ppl===1?' persona':' personas')+' ('+d.P+' P · '+d.C+' C) · '+d.n+' ingresos · '+hh(d.tot)+' horas hombre · '+d.exc+' excedieron',F,8.5,W-2*M-10),{x:M+9,y,size:8.5,font:F,color:ink});y-=12}y-=6}
   tableHead();
   rows.forEach((v,i)=>{if(y<M+30){head();tableHead()}
     if(i%2)page.drawRectangle({x:M,y:y-12,width:W-2*M,height:14,color:zeb});

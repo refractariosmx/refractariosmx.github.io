@@ -197,6 +197,16 @@ body.cap [data-act="editWorker"],body.cap [data-act="delWorker"],body.cap [data-
 .alertrow .what{color:var(--ink);font-weight:500;overflow-wrap:anywhere}
 .alertrow .timer{font-weight:700}
 @media (prefers-reduced-motion:reduce){.alertrow,.count{animation:none!important}}
+.alertrow .what{overflow-wrap:break-word;word-break:normal;hyphens:none}
+.alertrow .tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:640px){
+  .alertrow{grid-template-columns:minmax(0,1fr);gap:10px;padding:12px 14px}
+  .alertrow b.kind{font-size:1.25rem}
+  .alertrow .what{display:block;font-size:.95rem;line-height:1.35;margin-top:2px}
+  .alertrow .tools{justify-content:stretch}
+  .alertrow .tools .btn{flex:1 1 0;min-width:0}
+  .alertrow>.btn{justify-self:stretch}
+}
 
 /* Tablero por planta */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}

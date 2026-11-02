@@ -1304,22 +1304,23 @@ const tableHtml=rows=>`<table><thead><tr><th>Persona</th><th>Tipo</th><th>Especi
 function jobGroups(rows){const g=new Map();
   for(const v of rows){const k=v.job||'';if(!g.has(k))g.set(k,[]);g.get(k).push(v)}
   return [...g.entries()].map(([k,vs])=>({k,vs,j:L.jobs.get(k)})).sort((a,b)=>(a.k?0:1)-(b.k?0:1)||((a.j&&a.j.status!=='closed')?0:1)-((b.j&&b.j.status!=='closed')?0:1)||b.vs[0].in-a.vs[0].in)}
-const ACTIVE_MS=12*60000;
+const ACTIVE_MS=5*60000;
+const devOn=(d,now)=>now-(d.last||0)<ACTIVE_MS&&!(d.off&&d.off>=(d.last||0));
 function userDevs(u){return Object.entries(u.devices||{}).map(([id,d])=>({id,...d})).sort((a,b)=>(b.last||0)-(a.last||0))}
 function renderUsers(){const el=$('#usersPanel');if(!el)return;const show=isAdmin()&&L.users.size>0&&logMode==='users';el.hidden=!show;if(!show)return;
   const cnt=new Map();for(const c of COLS)if(c!=='users')for(const r of L[c].values()){if(r.by)cnt.set(r.by,(cnt.get(r.by)||0)+1);if(r.outBy&&r.outBy!==r.by)cnt.set(r.outBy,(cnt.get(r.outBy)||0)+1)}
   const now=Date.now(),us=[...L.users.values()].sort((a,b)=>(b.lastSeen||0)-(a.lastSeen||0));
   el.innerHTML=`<h3>Quién usa la app <span class="muted">(${us.length} ${us.length===1?'cuenta':'cuentas'})</span></h3>
-    <p class="muted">Cada cuenta muestra en qué dispositivos se ha abierto. <b>En uso ahora</b> = abierta en los últimos 12 minutos. Si una cuenta está en uso en 2 o más dispositivos a la vez, se marca en rojo. Para quitarle el acceso a alguien, desactiva su cuenta en Firebase → Authentication.</p>
+    <p class="muted">Cada cuenta muestra en qué dispositivos se ha abierto. <b>En uso ahora</b> = abierta en este momento (se actualiza cada 2 minutos; al cerrar la app se quita al instante, o a más tardar en 5 minutos). Si una cuenta está en uso en 2 o más dispositivos a la vez, se marca en rojo. Con <b>🗑 Quitar de la lista</b> borras un dispositivo que ya no se usa; si vuelve a abrirse, tendrá que autorizarse otra vez. Para quitarle el acceso a una persona, desactiva su cuenta en Firebase → Authentication.</p>
     ${(()=>{const pend=[];for(const u of us){if(ADMINS.includes(String(u.email||'').toLowerCase()))continue;const a=L.approvals.get(u.id);for(const d of userDevs(u))if(!(a&&a.d&&a.d[d.id]))pend.push({u,d})}
       return pend.length?`<div class="pendbar"><h4>⏳ ${pend.length} ${pend.length===1?'dispositivo esperando':'dispositivos esperando'} autorización</h4>${pend.map(({u,d})=>`<div class="prow2"><div class="who"><b>${esc(u.name||u.email)}</b> · ${esc(d.name||d.id)}<br><small class="muted">${esc(u.email||'')} · pidió acceso ${fmtD(d.first)} ${fmtHM(d.first)}</small></div>
         <button type="button" class="btn small primary" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="ok">Autorizar</button><button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Rechazar</button></div>`).join('')}</div>`:''})()}
-    <div class="ulist">${us.map(u=>{const ds=userDevs(u),act=ds.filter(d=>now-(d.last||0)<ACTIVE_MS),adm=ADMINS.includes(String(u.email||'').toLowerCase());
+    <div class="ulist">${us.map(u=>{const ds=userDevs(u),act=ds.filter(d=>devOn(d,now)),adm=ADMINS.includes(String(u.email||'').toLowerCase());
       return `<details class="ucard ${act.length>1?'warn':''}"><summary>
         <div><b>${esc(u.name||'(sin nombre)')}</b><small>${esc(u.email||'')} · ${adm?'Administrador':'Capturista'} · ${cnt.get(u.name)||0} registros</small></div>
         <span class="pill ${act.length>1?'over':ds.length>1?'warn':''}">${act.length>1?'⚠ '+act.length+' en uso a la vez':ds.length+' '+(ds.length===1?'dispositivo':'dispositivos')}</span></summary>
-        <div class="udevs">${ds.length?ds.map(d=>{const on=now-(d.last||0)<ACTIVE_MS;return `<div class="udev"><span class="dot ${on?'on':''}"></span><b>${esc(d.name||d.id)}</b>${(()=>{if(adm)return '<span class="dst ok">Administrador</span>';const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?'<span class="dst ok">✅ Autorizado</span>':st==='no'?'<span class="dst no">⛔ Bloqueado</span>':'<span class="dst pend">⏳ Pendiente</span>'})()}<span class="muted">${on?'<b style="color:var(--safe)">En uso ahora</b>':'Último uso '+fmtD(d.last)+' '+fmtHM(d.last)} · desde ${fmtD(d.first)}</span>
-        ${adm?'':(()=>{const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Quitar</button>`:`<button type="button" class="btn small primary" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="ok">Autorizar</button>${st==='no'?'':`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Rechazar</button>`}`})()}</div>`}).join(''):'<p class="muted">Sin dispositivos registrados todavía.</p>'}</div></details>`}).join('')}</div>`}
+        <div class="udevs">${ds.length?ds.map(d=>{const on=devOn(d,now),me=d.id===devId()&&u.id===SYNC.user.uid;return `<div class="udev"><span class="dot ${on?'on':''}"></span><b>${esc(d.name||d.id)}</b>${(()=>{if(adm)return '<span class="dst ok">Administrador</span>';const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?'<span class="dst ok">✅ Autorizado</span>':st==='no'?'<span class="dst no">⛔ Bloqueado</span>':'<span class="dst pend">⏳ Pendiente</span>'})()}<span class="muted">${on?'<b style="color:var(--safe)">En uso ahora</b>':'Último uso '+fmtD(d.last)+' '+fmtHM(d.last)} · desde ${fmtD(d.first)}</span>
+        ${adm?'':(()=>{const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Bloquear</button>`:`<button type="button" class="btn small primary" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="ok">Autorizar</button>${st==='no'?'':`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Rechazar</button>`}`})()}${on||me?'':`<button type="button" class="btn small" data-act="devDel" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}">🗑 Quitar de la lista</button>`}</div>`}).join(''):'<p class="muted">Sin dispositivos registrados todavía.</p>'}</div></details>`}).join('')}</div>`}
 function renderLog(){
   const adm=isAdmin()&&L.users.size>0,uc=$('#usersChip');uc.hidden=!adm;
   if(adm){const pc=pendingDevs();uc.innerHTML='Quién usa la app'+(pc?` <small class="pbadge">${pc}</small>`:'')}
@@ -1671,6 +1672,10 @@ const ACT={
     toast(watch==='all'?'Viendo a todos los departamentos.':'Viendo solo '+watchName()+'. Las alarmas de otros departamentos no suenan en esta tablet.')},
   goUsers(){logMode='users';setView('bitacora');renderLog()},
   lockCheck(){applyLock();toast(devStatus()==='ok'?'Autorizado.':'Aún no está autorizado. Avísale al administrador.')},
+  async devDel(b){const uid=b.dataset.uid,dev=b.dataset.dev,u=L.users.get(uid);if(!u)return;
+    if(!await ask('¿Quitar de la lista?','Se borrará este dispositivo de la lista. Si alguien vuelve a abrir la app en él, aparecerá de nuevo'+(ADMINS.includes(String(u.email||'').toLowerCase())?'.':' y tendrás que autorizarlo otra vez.'),'Sí, quitar','Cancelar'))return;
+    const ds={...(u.devices||{})};delete ds[dev];
+    try{await put('users',uid,{...u,devices:ds});const a=L.approvals.get(uid);if(a&&a.d&&a.d[dev]==='ok'){const d={...a.d};delete d[dev];await put('approvals',uid,{...a,d})}toast('Dispositivo quitado de la lista.')}catch(e){}},
   async devSet(b){const uid=b.dataset.uid,dev=b.dataset.dev,st=b.dataset.st,a=L.approvals.get(uid)||{d:{}};
     if(st==='no'&&!await ask('¿Quitar este dispositivo?','Ya no podrá ver ni registrar nada con esa cuenta en ese aparato, y se borrará la información guardada en él.','Sí, quitar','Cancelar'))return;
     try{await put('approvals',uid,{...a,d:{...(a.d||{}),[dev]:st}});toast(st==='ok'?'Dispositivo autorizado.':'Dispositivo bloqueado.')}catch(e){}},
@@ -1834,15 +1839,19 @@ let touchT=0;
 async function touchUser(){if(!SYNC.user)return;const uid=SYNC.user.uid,u=L.users.get(uid);
   if(!u||!u.name){if(!$('#dlgName').open){$('#nName').value='';$('#dlgName').showModal()}return}
   const id=devId(),now=Date.now(),ds={...(u.devices||{})},cur=ds[id];
-  if(cur&&now-touchT<4*60000)return;touchT=now;
+  if(cur&&!cur.off&&now-touchT<110000)return;touchT=now;
   ds[id]={name:devLabel(),first:(cur&&cur.first)||now,last:now};
   try{await put('users',uid,{...u,email:SYNC.user.email||'',lastSeen:now,device:devLabel(),devices:ds})}catch(e){}}
 $('#dlgName').addEventListener('cancel',e=>e.preventDefault());
 $('#nForm').addEventListener('submit',async e=>{e.preventDefault();const n=$('#nName').value.trim().toUpperCase();if(n.length<3){toast('Escribe tu nombre completo.');return}
   if(!SYNC.user){$('#dlgName').close();return}
   try{const now=Date.now();await put('users',SYNC.user.uid,{name:n,email:SYNC.user.email||'',firstSeen:now,lastSeen:now,device:devLabel(),devices:{[devId()]:{name:devLabel(),first:now,last:now}}});$('#dlgName').close();toast('Listo, '+n+'. Tus registros quedarán firmados con tu nombre.')}catch(x){}});
-setInterval(()=>{if(SYNC.user&&document.visibilityState==='visible')touchUser()},5*60000);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SYNC.user){touchT=0;touchUser()}});
+setInterval(()=>{if(SYNC.user&&document.visibilityState==='visible')touchUser()},120000);
+let offSent=0;
+function markOff(){try{if(!SYNC.user)return;const uid=SYNC.user.uid,u=L.users.get(uid),id=devId();if(!u||!u.name||!u.devices||!u.devices[id])return;const now=Date.now();if(now-offSent<5000)return;offSent=now;
+  put('users',uid,{...u,lastSeen:now,devices:{...u.devices,[id]:{...u.devices[id],last:now,off:now}}}).catch(()=>{})}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!SYNC.user)return;if(document.visibilityState==='visible'){touchT=0;touchUser()}else markOff()});
+addEventListener('pagehide',markOff);
 function syncStop(){unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];SYNC.started=false;dataStarted=false;applyLock()}
 function syncState(){
   if(SYNC.err==='sdk')return ['warn','Sincronización no disponible'];

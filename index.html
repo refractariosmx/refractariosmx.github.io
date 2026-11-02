@@ -161,6 +161,37 @@ main{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;
 .zcard>header b{display:block;font-family:var(--display);font-size:1.2rem;text-transform:uppercase;letter-spacing:.03em;line-height:1.1}
 .zcard>header small{color:var(--muted);font-size:.8rem}
 .zcard>header .cnt{font-family:var(--display);font-weight:700;font-size:1.4rem;background:var(--yellow);color:#1B1C1F;border-radius:8px;padding:2px 10px}
+.ulist{display:flex;flex-direction:column;gap:8px}
+.ucard{border:1px solid var(--line);border-left:6px solid var(--line);border-radius:10px;background:var(--surface)}
+.ucard.warn{border-left-color:var(--danger);background:linear-gradient(90deg,var(--danger-soft),var(--surface) 60%)}
+.ucard>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 12px}
+.ucard>summary::-webkit-details-marker{display:none}
+.ucard>summary>div{flex:1;min-width:180px}
+.ucard>summary b{display:block}
+.ucard>summary small{color:var(--muted)}
+.udevs{padding:0 12px 12px;display:flex;flex-direction:column;gap:6px}
+.udev{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:.9rem}
+.udev .dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.udev .dot.on{background:var(--safe);box-shadow:0 0 0 3px var(--safe-soft)}
+.pbadge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:.75rem;font-weight:800;margin-left:4px}
+.upanel{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.upanel h3{font-family:var(--display);text-transform:uppercase;letter-spacing:.03em;margin:0}
+#lockScr{position:fixed;inset:0;z-index:50;background:var(--graphite,#26282C);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));overflow:auto}
+#lockScr::before{content:"";position:absolute;inset:0 0 auto;height:14px;background:repeating-linear-gradient(-45deg,#FFC400 0 18px,#1B1C1F 18px 36px)}
+.lk-card{max-width:460px;width:100%;background:var(--surface);border-radius:18px;border-top:8px solid var(--yellow);padding:24px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.lk-ico{font-size:3rem;line-height:1}
+.lk-t{font-family:var(--display);text-transform:uppercase;margin:0;font-size:1.7rem;line-height:1.1}
+.lk-m{margin:0;color:var(--muted)}
+.lk-d{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--surface-2);border-radius:12px;padding:12px 14px}
+.lk-d div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.lk-d span{color:var(--muted);font-size:.85rem}
+.lk-card .acts{justify-content:center}
+body.locked{overflow:hidden}
+.pendbar{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:2px solid var(--warn);background:var(--warn-soft)}
+.pendbar h4{margin:0;font-family:var(--display);text-transform:uppercase;letter-spacing:.03em;color:var(--warn)}
+.prow2{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;background:var(--surface);border-radius:10px;padding:8px 10px}
+.prow2 .who{flex:1;min-width:180px}
+.dst{font-size:.75rem;font-weight:700;border-radius:999px;padding:2px 8px}
+.dst.ok{background:var(--safe-soft);color:var(--safe)}.dst.pend{background:var(--warn-soft);color:var(--warn)}.dst.no{background:var(--danger-soft);color:var(--danger)}
 .dept{display:flex;align-items:center;gap:8px;margin:6px 10px 2px;padding:4px 10px;border-left:6px solid var(--sc,#6B7280);background:var(--surface-2);border-radius:6px;font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 .dept span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
 .deptbar{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
@@ -606,10 +637,21 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <input type="file" accept="application/json,.json" id="restoreFile" class="sr" tabindex="-1">
       </div>
     </div>
-    <div class="chips" id="logModes"><button type="button" class="chip" data-act="logMode" data-m="job">Por reparación</button><button type="button" class="chip" data-act="logMode" data-m="all">Todos los registros</button></div>
+    <div class="chips" id="logModes"><button type="button" class="chip" data-act="logMode" data-m="job">Por reparación</button><button type="button" class="chip" data-act="logMode" data-m="all">Todos los registros</button><button type="button" class="chip adminonly" data-act="logMode" data-m="users" id="usersChip" hidden>Quién usa la app</button></div>
     <div id="log"></div>
+    <section class="panel upanel" id="usersPanel" hidden></section>
   </section>
 </main>
+
+<div id="lockScr" hidden role="alertdialog" aria-labelledby="lkT">
+  <div class="lk-card">
+    <div class="lk-ico">⏳</div>
+    <h2 class="lk-t" id="lkT">Dispositivo pendiente de autorizar</h2>
+    <p class="lk-m"></p>
+    <div class="lk-d"></div>
+    <div class="acts"><button type="button" class="btn" data-act="syncOut">Cerrar sesión</button><button type="button" class="btn primary" data-act="lockCheck">Volver a revisar</button></div>
+  </div>
+</div>
 
 <footer class="sign">
   <span>Creado por</span>
@@ -712,6 +754,15 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
   </form>
 </dialog>
 
+<dialog id="dlgName">
+  <form class="dlg" id="nForm">
+    <h2>¿Quién eres?</h2>
+    <p class="muted">Escribe tu nombre completo. Todo lo que registres en la app quedará firmado con tu nombre.</p>
+    <div class="field"><label class="label" for="nName">Nombre completo</label><input id="nName" required maxlength="60" autocomplete="name" placeholder="Ej. Juan Pérez López"></div>
+    <div class="acts"><button type="submit" class="btn primary">Guardar</button></div>
+  </form>
+</dialog>
+
 <dialog id="dlgAsk">
   <div class="dlg"><h2 id="askT"></h2><p id="askM"></p>
     <div class="acts"><button type="button" class="btn" id="askNo">Cancelar</button><button type="button" class="btn primary" id="askYes">Aceptar</button></div></div>
@@ -773,7 +824,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
-const COLS=['workers','zones','visits','config','jobs','crew','plants','sites','companies'];
+const COLS=['workers','zones','visits','config','jobs','crew','plants','sites','companies','users','approvals'];
 const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
 const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min'],[5,'Prueba 5 min']];
@@ -862,12 +913,14 @@ function zLabel(zid,zName,pid,pName){const z=L.zones.get(zid),p=L.plants.get(pid
 const placeText=v=>{const p=L.plants.get(visitPlant(v));return (p?p.code+' · ':v.pName?v.pName+' · ':'')+v.zName};
 
 function fail(e){toast(e&&e.name==='QuotaExceededError'?'La tablet se quedó sin espacio. Respalda y borra registros antiguos.':'No se pudo guardar. Intenta de nuevo.')}
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',5);
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('espacios-confinados',7);
   r.onupgradeneeded=()=>COLS.forEach(c=>{if(!r.result.objectStoreNames.contains(c))r.result.createObjectStore(c,{keyPath:'id'})});
   r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})}
 function tx(cols,mode,fn){return new Promise((res,rej)=>{const t=idb.transaction(cols,mode);let out;try{out=fn(t)}catch(e){rej(e);return}
   t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>rej(t.error||new Error('tx'))})}
+const myName=()=>{try{if(!SYNC.user)return '';const u=L.users.get(SYNC.user.uid);return (u&&u.name)||SYNC.user.email||''}catch(e){return ''}};
 async function put(col,id,data){const row={...data,id};
+  if(col!=='users'){const me=myName();if(me){if(!L[col].has(id)){row.by=me;row.byDev=devLabel();try{row.byEmail=SYNC.user.email||''}catch(e){}}row.upBy=me}}
   try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).put(row))}catch(e){fail(e);throw e}
   L[col].set(id,row);renderAll();fsPush(col,id)}
 async function patch(col,id,data){return put(col,id,{...L[col].get(id),...data})}
@@ -942,7 +995,7 @@ function activeRestOf(wid){return restsNow().find(v=>v.w===wid)}
 /* ---------- entrada / salida ---------- */
 function findWorker(code){const id=String(code).trim().toUpperCase().replace(/^EC1:/,'');return L.workers.get(id)}
 async function closeVisit(v,via){
-  const now=Date.now(),rest=selRest,data={out:now,open:false,viaOut:via,restMin:rest,restEnd:rest?now+rest*60000:0,restDone:false,restAck:0};
+  const now=Date.now(),rest=selRest,data={out:now,open:false,viaOut:via,outBy:myName(),outDev:myName()?devLabel():'',restMin:rest,restEnd:rest?now+rest*60000:0,restDone:false,restAck:0};
   await patch('visits',v.id,data);beep(false);return {t:now,rest,restEnd:data.restEnd}}
 async function addToJob(j,w){const id=j.id+'-'+w.id;if(!L.crew.has(id))await put('crew',id,{job:j.id,w:w.id,name:w.name,at:Date.now()})}
 async function toggle(w,via){
@@ -1012,11 +1065,13 @@ function alertsNow(){
   restsNow().filter(v=>now>=v.restEnd&&!v.restAck).forEach(v=>out.push({type:'rest',v,st:'rest'}));
   const rank={over:0,rest:1,warn:2};return out.sort((a,b)=>rank[a.st]-rank[b.st]||a.v.in-b.v.in);
 }
+function pendingDevs(){try{if(!isAdmin()||!SYNC.user)return 0}catch(e){return 0}let n=0;for(const u of L.users.values()){if(ADMINS.includes(String(u.email||'').toLowerCase()))continue;const a=L.approvals.get(u.id);for(const id of Object.keys(u.devices||{}))if(!(a&&a.d&&a.d[id]))n++}return n}
 function renderAlerts(){
   renderWatch();
   const el=$('#alerts'),all=alertsNow(),xj=jobs().filter(jobExpired),as=all.filter(isMine),oth=all.filter(a=>!isMine(a));el.hidden=!all.length&&!xj.length;
   const othSum=(()=>{const m=new Map();for(const a of oth){const l=specLabel(specOf(a.v));m.set(l,(m.get(l)||0)+1)}return [...m.entries()].map(([l,n])=>l+' '+n).join(' · ')})();
-  el.innerHTML=xj.map(j=>`<div class="alertrow" data-st="over" style="animation:none"><div><b class="kind">REPARACIÓN VENCIDA</b><span class="what">${esc(j.name)} · ${esc(j.pName||'')} · terminaba el ${fmtDay(j.end)}. ¿La extiendes o la cierras?</span></div>
+  const pc=pendingDevs();if(pc)el.hidden=false;
+  el.innerHTML=(pc?`<div class="alertrow" data-st="warn" style="animation:none"><div><b class="kind">⏳ DISPOSITIVOS POR AUTORIZAR</b><span class="what">${pc} ${pc===1?'dispositivo está esperando':'dispositivos están esperando'} tu autorización para usar la app.</span></div><button type="button" class="btn" data-act="goUsers">Revisar</button></div>`:'')+xj.map(j=>`<div class="alertrow" data-st="over" style="animation:none"><div><b class="kind">REPARACIÓN VENCIDA</b><span class="what">${esc(j.name)} · ${esc(j.pName||'')} · terminaba el ${fmtDay(j.end)}. ¿La extiendes o la cierras?</span></div>
     <div class="tools"><button type="button" class="btn" data-act="extendJob" data-id="${esc(j.id)}">Extender</button><button type="button" class="btn danger" data-act="closeJob" data-id="${esc(j.id)}">Cerrar y enviar</button></div></div>`).join('')+as.map(a=>alertRow(a,false)).join('')
     +(oth.length?`<div class="alertrow others"><div><b class="kind">${oth.length} ${oth.length===1?'alerta':'alertas'} de otros departamentos</b><span class="what">${esc(othSum)} · sin sonido en esta tablet</span></div><button type="button" class="btn small" data-act="toggleOthers">${showOthers?'Ocultar':'Ver'}</button></div>`
       +(showOthers?oth.map(a=>alertRow(a,true)).join(''):''):'');
@@ -1242,12 +1297,36 @@ function rowHtml(v){const lim=visitLimit(v);
      <td class="num">${v.open?'':fmtT(v.out)}</td><td class="num">${v.open?'':dur(v.out-v.in)}</td><td>${regName(lim)}</td>
      <td>${exceeded(v)?'<span class="pill over">Excedió</span>':v.open?'<span class="pill in">Adentro</span>':'En tiempo'}</td>
      <td>${v.restMin?v.restMin+' min':''}</td>
-     <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td></tr>`}
-const tableHtml=rows=>`<table><thead><tr><th>Persona</th><th>Tipo</th><th>Especialidad</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
+     <td>${v.via==='qr'?'QR':'Manual'}${!v.open&&v.viaOut&&v.viaOut!==v.via?' / '+(v.viaOut==='qr'?'QR':'Manual'):''}</td>
+     <td>${esc(whoTxt(v,isAdmin()))}</td></tr>`}
+const whoTxt=(v,dev)=>{const a=v.by?v.by+(dev&&v.byDev?' ('+v.byDev+')':''):'',b=v.outBy?v.outBy+(dev&&v.outDev?' ('+v.outDev+')':''):'';return !a&&!b?'':a===b||!b?a:(a||'?')+' / '+b};
+const tableHtml=rows=>`<table><thead><tr><th>Persona</th><th>Tipo</th><th>Especialidad</th><th>Planta</th><th>Área · espacio</th><th>Reparación</th><th>Día</th><th>Entrada</th><th>Salida</th><th class="num">Tiempo adentro</th><th>Régimen</th><th>Estado</th><th>Descanso</th><th>Registro</th><th>Registró (usuario)</th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
 function jobGroups(rows){const g=new Map();
   for(const v of rows){const k=v.job||'';if(!g.has(k))g.set(k,[]);g.get(k).push(v)}
   return [...g.entries()].map(([k,vs])=>({k,vs,j:L.jobs.get(k)})).sort((a,b)=>(a.k?0:1)-(b.k?0:1)||((a.j&&a.j.status!=='closed')?0:1)-((b.j&&b.j.status!=='closed')?0:1)||b.vs[0].in-a.vs[0].in)}
+const ACTIVE_MS=12*60000;
+function userDevs(u){return Object.entries(u.devices||{}).map(([id,d])=>({id,...d})).sort((a,b)=>(b.last||0)-(a.last||0))}
+function renderUsers(){const el=$('#usersPanel');if(!el)return;const show=isAdmin()&&L.users.size>0&&logMode==='users';el.hidden=!show;if(!show)return;
+  const cnt=new Map();for(const c of COLS)if(c!=='users')for(const r of L[c].values()){if(r.by)cnt.set(r.by,(cnt.get(r.by)||0)+1);if(r.outBy&&r.outBy!==r.by)cnt.set(r.outBy,(cnt.get(r.outBy)||0)+1)}
+  const now=Date.now(),us=[...L.users.values()].sort((a,b)=>(b.lastSeen||0)-(a.lastSeen||0));
+  el.innerHTML=`<h3>Quién usa la app <span class="muted">(${us.length} ${us.length===1?'cuenta':'cuentas'})</span></h3>
+    <p class="muted">Cada cuenta muestra en qué dispositivos se ha abierto. <b>En uso ahora</b> = abierta en los últimos 12 minutos. Si una cuenta está en uso en 2 o más dispositivos a la vez, se marca en rojo. Para quitarle el acceso a alguien, desactiva su cuenta en Firebase → Authentication.</p>
+    ${(()=>{const pend=[];for(const u of us){if(ADMINS.includes(String(u.email||'').toLowerCase()))continue;const a=L.approvals.get(u.id);for(const d of userDevs(u))if(!(a&&a.d&&a.d[d.id]))pend.push({u,d})}
+      return pend.length?`<div class="pendbar"><h4>⏳ ${pend.length} ${pend.length===1?'dispositivo esperando':'dispositivos esperando'} autorización</h4>${pend.map(({u,d})=>`<div class="prow2"><div class="who"><b>${esc(u.name||u.email)}</b> · ${esc(d.name||d.id)}<br><small class="muted">${esc(u.email||'')} · pidió acceso ${fmtD(d.first)} ${fmtHM(d.first)}</small></div>
+        <button type="button" class="btn small primary" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="ok">Autorizar</button><button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Rechazar</button></div>`).join('')}</div>`:''})()}
+    <div class="ulist">${us.map(u=>{const ds=userDevs(u),act=ds.filter(d=>now-(d.last||0)<ACTIVE_MS),adm=ADMINS.includes(String(u.email||'').toLowerCase());
+      return `<details class="ucard ${act.length>1?'warn':''}"><summary>
+        <div><b>${esc(u.name||'(sin nombre)')}</b><small>${esc(u.email||'')} · ${adm?'Administrador':'Capturista'} · ${cnt.get(u.name)||0} registros</small></div>
+        <span class="pill ${act.length>1?'over':ds.length>1?'warn':''}">${act.length>1?'⚠ '+act.length+' en uso a la vez':ds.length+' '+(ds.length===1?'dispositivo':'dispositivos')}</span></summary>
+        <div class="udevs">${ds.length?ds.map(d=>{const on=now-(d.last||0)<ACTIVE_MS;return `<div class="udev"><span class="dot ${on?'on':''}"></span><b>${esc(d.name||d.id)}</b>${(()=>{if(adm)return '<span class="dst ok">Administrador</span>';const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?'<span class="dst ok">✅ Autorizado</span>':st==='no'?'<span class="dst no">⛔ Bloqueado</span>':'<span class="dst pend">⏳ Pendiente</span>'})()}<span class="muted">${on?'<b style="color:var(--safe)">En uso ahora</b>':'Último uso '+fmtD(d.last)+' '+fmtHM(d.last)} · desde ${fmtD(d.first)}</span>
+        ${adm?'':(()=>{const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Quitar</button>`:`<button type="button" class="btn small primary" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="ok">Autorizar</button>${st==='no'?'':`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Rechazar</button>`}`})()}</div>`}).join(''):'<p class="muted">Sin dispositivos registrados todavía.</p>'}</div></details>`}).join('')}</div>`}
 function renderLog(){
+  const adm=isAdmin()&&L.users.size>0,uc=$('#usersChip');uc.hidden=!adm;
+  if(adm){const pc=pendingDevs();uc.innerHTML='Quién usa la app'+(pc?` <small class="pbadge">${pc}</small>`:'')}
+  if(logMode==='users'&&!adm)logMode='job';
+  const isU=logMode==='users';$('#usersPanel').hidden=!isU;$('#log').hidden=isU;
+  document.querySelectorAll('#v-bitacora .head .tools').forEach(t=>t.hidden=isU);
+  if(isU){document.querySelectorAll('#logModes .chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===logMode));renderUsers();return}
   const rows=logRows(),el=$('#log'),d=$('#logDate').value;
   $('#sendBtn').textContent=d?'Enviar bitácora del '+fmtD(new Date(d+'T12:00').getTime()):'Enviar bitácora completa';
   document.querySelectorAll('#logModes .chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===logMode));
@@ -1263,7 +1342,7 @@ function renderLog(){
       <details><summary>Ver los ${vs.length} registros</summary><div class="tablewrap">${tableHtml(vs)}</div></details></section>`}).join('')}</div>`;
 }
 function csvFor(rows,fname){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
-  const out=[['Persona','Tipo','Especialidad','Supervisor','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro']].concat(rows.map(v=>[v.wName,typeName(typeOf(v)),specOf(v),v.supName||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual']));
+  const out=[['Persona','Tipo','Especialidad','Supervisor','Clave','Planta','Área','Espacio confinado','Reparación','Fecha','Entrada','Salida','Minutos adentro','Régimen','Excedió','Descanso (min)','Registro','Registró entrada','Registró salida']].concat(rows.map(v=>[v.wName,typeName(typeOf(v)),specOf(v),v.supName||'',v.w,siteName(v),plantName(v),v.zName,v.jobName||'',dayKey(v.in),fmtT(v.in),v.open?'':fmtT(v.out),v.open?'':((v.out-v.in)/60000).toFixed(1),regName(visitLimit(v)),exceeded(v)?'Sí':'No',v.restMin||'',v.via==='qr'?'QR':'Manual',v.by||'',v.outBy||'']));
   return new File(['﻿'+out.map(r=>r.map(q).join(',')).join('\r\n')],fname,{type:'text/csv'})}
 function csvFile(){const d=$('#logDate').value;return csvFor(logRows(),'bitacora-espacios-confinados-'+(d||'completa-'+dayKey(Date.now()))+'.csv')}
 let pendingShare=null;
@@ -1285,7 +1364,7 @@ async function pdfFor(rows,o){
   const fit=(t,f,sz,w)=>{t=pdfSafe(t);if(f.widthOfTextAtSize(t,sz)<=w)return t;while(t.length>1&&f.widthOfTextAtSize(t+'...',sz)>w)t=t.slice(0,-1);return t+'...'};
   let cols=[['Persona',128,v=>v.wName],['Tipo',52,v=>typeName(typeOf(v))],['Especialidad',62,v=>specOf(v)],['Supervisor',80,v=>v.supName||''],['Planta · área · espacio',o.job?128:104,v=>{const p=L.plants.get(visitPlant(v));return [siteName(v),p?p.code:plantName(v),v.zName].filter(Boolean).join(' · ')}]]
     .concat(o.job?[]:[['Reparación',84,v=>v.jobName||'']])
-    .concat([['Fecha',40,v=>fmtD(v.in)],['Entrada',46,v=>fmtHM(v.in)],['Salida',46,v=>v.open?'Adentro':fmtHM(v.out)],['Tiempo',40,v=>v.open?'':dur(v.out-v.in)],['Régimen',50,v=>regName(visitLimit(v))],['Excedió',38,v=>exceeded(v)?'Sí':'No'],['Descanso',44,v=>v.restMin?v.restMin+' min':'']]);
+    .concat([['Fecha',40,v=>fmtD(v.in)],['Entrada',46,v=>fmtHM(v.in)],['Salida',46,v=>v.open?'Adentro':fmtHM(v.out)],['Tiempo',40,v=>v.open?'':dur(v.out-v.in)],['Régimen',50,v=>regName(visitLimit(v))],['Excedió',38,v=>exceeded(v)?'Sí':'No'],['Descanso',44,v=>v.restMin?v.restMin+' min':''],['Registró',70,v=>whoTxt(v)]]);
   const tw=cols.reduce((a,c)=>a+c[1],0),k=(W-2*M)/tw;cols=cols.map(c=>[c[0],c[1]*k,c[2]]);
   const now=new Date(),gen='Generado el '+now.toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})+' a las '+fmtHM(now.getTime());
   const ppl=new Set(rows.map(v=>v.w)).size,tot=rows.reduce((a,v)=>a+((v.open?Date.now():v.out)-v.in),0),exc=rows.filter(exceeded).length;
@@ -1400,6 +1479,7 @@ function openWorker(id){
       <dt>Reparaciones</dt><dd>${jobsOf.length?jobsOf.map(j=>esc(j.name)).join(', '):'Ninguna activa'}</dd>
       <dt>Presión arterial (carnet médico)</dt><dd>${w.bp==='noapto'?'<b style="color:var(--danger)">No apto. No puede acceder a espacios confinados.</b>':w.bp==='chequeo'?'<b>Requiere chequeo</b>':esc(BP[w.bp]||'Sin dato')}</dd>
       <dt>Supervisor</dt><dd>${w.isSup?'Es supervisor':esc(supOf(w)||'Sin asignar')}</dd>
+      ${w.by?`<dt>Dado de alta por</dt><dd>${esc(w.by)}</dd>`:''}
       <dt>Capacitación de espacios confinados</dt><dd>${w.cert?(certExpired(w)?'<b style="color:var(--danger)">Vencida desde '+esc(w.cert)+'. No puede acceder a espacios confinados.</b>':'Vigente hasta '+esc(w.cert)):'Sin fecha registrada'}</dd></dl>
     <div class="qrbox">${label?`<img src="${label}" alt="Etiqueta con código QR de ${esc(w.name)}">`:'<p class="muted">No se pudo generar el código QR.</p>'}
       <p class="muted" style="font-size:.85rem;text-align:center">Imprime esta etiqueta en vinil adhesivo de 5 × 6.5 cm o más y pégala en el casco.</p></div>
@@ -1589,6 +1669,11 @@ const ACT={
   toggleOthers(){showOthers=!showOthers;alertSig='';checkAlerts()},
   pickWatch(b){watch=b.dataset.k;ls('ec.watch',watch);showOthers=false;alertSig='';renderBoard();renderRests();checkAlerts();renderWatch();
     toast(watch==='all'?'Viendo a todos los departamentos.':'Viendo solo '+watchName()+'. Las alarmas de otros departamentos no suenan en esta tablet.')},
+  goUsers(){logMode='users';setView('bitacora');renderLog()},
+  lockCheck(){applyLock();toast(devStatus()==='ok'?'Autorizado.':'Aún no está autorizado. Avísale al administrador.')},
+  async devSet(b){const uid=b.dataset.uid,dev=b.dataset.dev,st=b.dataset.st,a=L.approvals.get(uid)||{d:{}};
+    if(st==='no'&&!await ask('¿Quitar este dispositivo?','Ya no podrá ver ni registrar nada con esa cuenta en ese aparato, y se borrará la información guardada en él.','Sí, quitar','Cancelar'))return;
+    try{await put('approvals',uid,{...a,d:{...(a.d||{}),[dev]:st}});toast(st==='ok'?'Dispositivo autorizado.':'Dispositivo bloqueado.')}catch(e){}},
   newJob(){openJob()},newInsp(){openInsp()},
   async delJob(b){const j=L.jobs.get(b.dataset.id);if(!j)return;
     try{for(const c of crewOf(j.id))await del('crew',c.id);await del('jobs',j.id);toast('Reparación "'+j.name+'" quitada de la lista. Sus registros siguen en la bitácora.')}catch(e){}},
@@ -1714,14 +1799,51 @@ async function onRemote(col,snap){
   if(changed)renderAll();
   syncUI();
 }
-function syncStart(){
-  if(SYNC.started)return;SYNC.started=true;
-  const cutoff=Date.now()-45*864e5;
-  COLS.forEach(col=>{let q=SYNC.fs.collection(SITE+'/'+col);if(col==='visits')q=q.where('in','>=',cutoff);
+let dataStarted=false;
+function ownDoc(col){const uid=SYNC.user.uid;for(const id of [...L[col].keys()])if(id!==uid)setLocal(col,id,null);
+  unsubs.push(SYNC.fs.collection(SITE+'/'+col).doc(uid).onSnapshot({includeMetadataChanges:true},async d=>{
+    if(d.metadata.hasPendingWrites)return;if(d.exists)await setLocal(col,uid,{...d.data(),id:uid});else if(col==='approvals'&&!d.metadata.fromCache)await setLocal(col,uid,null);
+    SYNC.err='';if(col==='approvals')afterApproval(d.metadata.fromCache);syncUI()},e=>{}))}
+function startData(){if(dataStarted||!SYNC.started)return;dataStarted=true;
+  const cutoff=Date.now()-45*864e5,adm=isAdmin();
+  COLS.forEach(col=>{if(!adm&&(col==='users'||col==='approvals'))return;
+    let q=SYNC.fs.collection(SITE+'/'+col);if(col==='visits')q=q.where('in','>=',cutoff);
     unsubs.push(q.onSnapshot({includeMetadataChanges:true},snap=>onRemote(col,snap),e=>{SYNC.err=(e&&e.code)||'error';syncUI()}))});
   const o=outbox();ls('ec.outbox','[]');o.forEach(x=>fsPush(x[0],x[1]));
 }
-function syncStop(){unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];SYNC.started=false}
+function syncStart(){
+  if(SYNC.started)return;SYNC.started=true;dataStarted=false;
+  if(isAdmin()){applyLock();startData();return}
+  ownDoc('users');ownDoc('approvals');applyLock();if(devStatus()==='ok')startData();
+}
+function devId(){let d='';try{d=localStorage.getItem('ec.dev')||''}catch(e){}
+  if(!d){d=Math.random().toString(36).slice(2,6).toUpperCase()+Date.now().toString(36).slice(-2).toUpperCase();try{localStorage.setItem('ec.dev',d)}catch(e){}}return d}
+const devLabel=()=>devName()+' #'+devId().slice(0,4);
+function devStatus(){try{if(!SYNC.user||isAdmin())return 'ok';const a=L.approvals.get(SYNC.user.uid),st=a&&a.d&&a.d[devId()];return st==='ok'?'ok':st==='no'?'no':'pending'}catch(e){return 'ok'}}
+function applyLock(){const st=devStatus(),lock=st!=='ok';ls('ec.lock',lock?st:'');const el=$('#lockScr');if(!el)return;el.hidden=!lock;document.body.classList.toggle('locked',lock);
+  if(!lock)return;let em='';try{em=SYNC.user.email||''}catch(e){}
+  el.querySelector('.lk-t').textContent=st==='no'?'Dispositivo no autorizado':'Dispositivo pendiente de autorizar';
+  el.querySelector('.lk-m').innerHTML=st==='no'?'El administrador <b>rechazó</b> este dispositivo para tu cuenta. Si es un error, pídele que lo autorice.':'Tu cuenta ya está conectada, pero este dispositivo necesita la <b>aprobación del administrador</b> antes de mostrar la información y permitir registros. Avísale para que lo autorice; en cuanto lo haga, la app se abrirá sola.';
+  el.querySelector('.lk-d').innerHTML=`<div><span>Cuenta</span><b>${esc(em)}</b></div><div><span>Nombre</span><b>${esc(myName()||'—')}</b></div><div><span>Dispositivo</span><b>${esc(devLabel())}</b></div>`}
+async function wipeLocal(){for(const c of COLS){if(c==='users'||c==='approvals')continue;for(const id of [...L[c].keys()])await setLocal(c,id,null)}ls('ec.outbox','[]')}
+function afterApproval(fromCache){const st=devStatus();applyLock();
+  if(st==='ok'){if(!dataStarted){startData();toast('Dispositivo autorizado. Cargando la información…')}}
+  else if(!fromCache&&(st==='no'||dataStarted)){dataStarted=false;unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];ownDoc('users');ownDoc('approvals');wipeLocal()}}
+function devName(){const ua=navigator.userAgent;return /iPad/.test(ua)?'iPad':/iPhone/.test(ua)?'iPhone':/Android/.test(ua)?(/Mobile/.test(ua)?'Celular Android':'Tablet Android'):/Windows/.test(ua)?'Computadora Windows':/Mac/.test(ua)?'Mac':'Otro'}
+let touchT=0;
+async function touchUser(){if(!SYNC.user)return;const uid=SYNC.user.uid,u=L.users.get(uid);
+  if(!u||!u.name){if(!$('#dlgName').open){$('#nName').value='';$('#dlgName').showModal()}return}
+  const id=devId(),now=Date.now(),ds={...(u.devices||{})},cur=ds[id];
+  if(cur&&now-touchT<4*60000)return;touchT=now;
+  ds[id]={name:devLabel(),first:(cur&&cur.first)||now,last:now};
+  try{await put('users',uid,{...u,email:SYNC.user.email||'',lastSeen:now,device:devLabel(),devices:ds})}catch(e){}}
+$('#dlgName').addEventListener('cancel',e=>e.preventDefault());
+$('#nForm').addEventListener('submit',async e=>{e.preventDefault();const n=$('#nName').value.trim().toUpperCase();if(n.length<3){toast('Escribe tu nombre completo.');return}
+  if(!SYNC.user){$('#dlgName').close();return}
+  try{const now=Date.now();await put('users',SYNC.user.uid,{name:n,email:SYNC.user.email||'',firstSeen:now,lastSeen:now,device:devLabel(),devices:{[devId()]:{name:devLabel(),first:now,last:now}}});$('#dlgName').close();toast('Listo, '+n+'. Tus registros quedarán firmados con tu nombre.')}catch(x){}});
+setInterval(()=>{if(SYNC.user&&document.visibilityState==='visible')touchUser()},5*60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SYNC.user){touchT=0;touchUser()}});
+function syncStop(){unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];SYNC.started=false;dataStarted=false;applyLock()}
 function syncState(){
   if(SYNC.err==='sdk')return ['warn','Sincronización no disponible'];
   if(!SYNC.auth)return ['','Sincronización: cargando'];
@@ -1744,6 +1866,8 @@ function renderSyncDlg(){
   el.innerHTML=`<h2>Sincronización</h2>
     <dl class="dl"><dt>Estado</dt><dd><b>${esc(t)}</b></dd>
     <dt>Cuenta</dt><dd>${esc(SYNC.user.email||'')}<span class="rolebadge">${isAdmin()?'Administrador':'Capturista · solo agregar'}</span></dd>
+    <dt>Tu nombre</dt><dd>${esc(myName()||'—')}</dd>
+    ${isAdmin()?`<dt>Este dispositivo</dt><dd>${esc(devLabel())}</dd>`:''}
     <dt>UID</dt><dd class="num">${esc(SYNC.user.uid)}</dd>
     <dt>Última sincronización</dt><dd class="num">${SYNC.last?fmtD(SYNC.last)+' '+fmtT(SYNC.last):'Aún no'}</dd>
     <dt>Cambios por subir</dt><dd class="num">${SYNC.pending+outbox().length}</dd></dl>
@@ -1760,7 +1884,7 @@ async function syncInit(){
     firebase.initializeApp(SYNC.cfg);SYNC.auth=firebase.auth();SYNC.fs=firebase.firestore();
     try{await SYNC.fs.enablePersistence({synchronizeTabs:true})}catch(e){}
   }catch(e){SYNC.err='sdk';SYNC.auth=null;syncUI();return}
-  SYNC.auth.onAuthStateChanged(u=>{SYNC.user=u||null;applyRole();renderAll();if(u)syncStart();else syncStop();syncUI();if($('#dlgSync').open)renderSyncDlg()});
+  SYNC.auth.onAuthStateChanged(u=>{SYNC.user=u||null;applyRole();applyLock();renderAll();if(u)setTimeout(touchUser,2500);if(u)syncStart();else syncStop();syncUI();if($('#dlgSync').open)renderSyncDlg()});
 }
 addEventListener('online',syncUI);addEventListener('offline',syncUI);
 
@@ -1773,7 +1897,7 @@ addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
   const v=ls('ec.view');setView(VIEWS.includes(v)?v:'adentro');
   showResult(null);renderAll();tick();setInterval(tick,1000);netState();
   try{idb=await openDB();await loadAll()}catch(e){idb=null;$('#bLocal').hidden=false}
-  ready=true;applyRole();renderAll();
+  ready=true;applyRole();renderAll();if(ls('ec.lock'))$('#lockScr').hidden=false;
   syncInit();
   setTimeout(()=>{if(navigator.onLine!==false)ensurePdfLib().catch(()=>{})},4000);
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}

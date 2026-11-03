@@ -938,7 +938,7 @@ const myName=()=>{try{if(!SYNC.user)return '';const u=L.users.get(SYNC.user.uid)
 async function put(col,id,data){const row={...data,id};
   if(col!=='users'){const me=myName();if(me){if(!L[col].has(id)){row.by=me;row.byDev=devLabel();try{row.byEmail=SYNC.user.email||''}catch(e){}}row.upBy=me}}
   try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).put(row))}catch(e){fail(e);throw e}
-  L[col].set(id,row);renderAll();fsPush(col,id)}
+  L[col].set(id,row);(col==='users'||col==='approvals'?renderLite():renderAll());fsPush(col,id)}
 async function patch(col,id,data){return put(col,id,{...L[col].get(id),...data})}
 async function del(col,id){
   try{if(idb)await tx(col,'readwrite',t=>t.objectStore(col).delete(id))}catch(e){fail(e);throw e}
@@ -1118,6 +1118,9 @@ function checkAlerts(){
 
 /* ---------- render ---------- */
 let migT;
+let userTap=0;document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('summary'))userTap=Date.now()},true);
+const byUser=()=>Date.now()-userTap<1000;
+const renderLite=()=>{renderHeader();renderAlerts();renderLog();applyLock()};
 function renderAll(){renderHeader();renderBoard();renderRests();renderAlerts();renderScanSetup();renderJobs();renderCards();renderPlants();renderLog();
   $('#notifBtn').hidden=!('Notification' in window)||Notification.permission!=='default';
   if(ready){clearTimeout(migT);migT=setTimeout(migrate,300)}}
@@ -1171,7 +1174,7 @@ function renderBoard(){
 let stOpen='';
 document.addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.stgrp'))return;
   if(d.open&&d.dataset.auto)return;
-  if(d.open){stOpen=d.dataset.d;document.querySelectorAll('details.stgrp[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}
+  if(d.open){stOpen=d.dataset.d;document.querySelectorAll('details.stgrp[open]').forEach(o=>{if(o!==d)o.open=false});if(byUser())setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}
   else if(stOpen===d.dataset.d)stOpen=''},true);
 function renderRests(){
   const allRs=restsNow(),rs=allRs.filter(inWatch),el=$('#rests'),now=Date.now(),hidR=allRs.length-rs.length;
@@ -1771,11 +1774,11 @@ $('#cam').addEventListener('change',async e=>{const f=e.target.files[0];e.target
 $('#logDate').addEventListener('change',renderLog);
 // Acordeón de áreas en Plantas: una abierta a la vez
 $('#plants').addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.plant'))return;
-  if(d.open){plOpen=d.dataset.p;document.querySelectorAll('#plants details.plant[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(x){}},60)}
+  if(d.open){plOpen=d.dataset.p;document.querySelectorAll('#plants details.plant[open]').forEach(o=>{if(o!==d)o.open=false});if(byUser())setTimeout(()=>{try{d.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(x){}},60)}
   else if(plOpen===d.dataset.p)plOpen=''},true);
 // Acordeón: al abrir una especialidad se cierran las demás
 $('#cards').addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.specgrp'))return;
-  if(d.open){if(!pfQ){pfOpen=d.dataset.g;document.querySelectorAll('#cards details.specgrp[open]').forEach(o=>{if(o!==d)o.open=false});setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}}
+  if(d.open){if(!pfQ){pfOpen=d.dataset.g;document.querySelectorAll('#cards details.specgrp[open]').forEach(o=>{if(o!==d)o.open=false});if(byUser())setTimeout(()=>{try{d.scrollIntoView({block:'start',behavior:'smooth'})}catch(x){}},60)}}
   else if(pfOpen===d.dataset.g)pfOpen=''},true);
 let pfT;$('#pSearch').addEventListener('input',e=>{clearTimeout(pfT);pfT=setTimeout(()=>{pfQ=e.target.value;renderCards()},150)});
 let coPending='';
@@ -1821,7 +1824,7 @@ async function onRemote(col,snap){
     const k='ec.seed.'+SYNC.cfg.projectId+'.'+col;
     if(!ls(k)){ls(k,'1');const ids=new Set(snap.docs.map(d=>d.id));for(const id of [...L[col].keys()])if(!ids.has(id))fsPush(col,id)}
   }
-  if(changed)renderAll();
+  if(changed)(col==='users'||col==='approvals'?renderLite():renderAll());
   syncUI();
 }
 let dataStarted=false;

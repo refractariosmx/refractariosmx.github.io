@@ -219,7 +219,7 @@ body.locked{overflow:hidden}
 .jdept{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
 .jdept div{border-left:5px solid var(--sc,#6B7280);background:var(--surface-2);border-radius:8px;padding:6px 10px;font-size:.85rem}
 .jdept b{text-transform:uppercase;letter-spacing:.03em}
-body.cap [data-act="editWorker"],body.cap [data-act="delWorker"],body.cap [data-act="editPlant"],body.cap [data-act="editSite"],body.cap [data-act="delCrew"],body.cap [data-act="delJob"],body.cap [data-act="extendJob"],body.cap #sDel,body.cap #pDel,body.cap #zDel,body.cap label[for="restoreFile"],body.cap #cleanBtn{display:none!important}
+body.cap [data-act="editWorker"],body.cap [data-act="delWorker"],body.cap [data-act="editPlant"],body.cap [data-act="editSite"],body.cap [data-act="delCrew"],body.cap [data-act="delJob"],body.cap [data-act="extendJob"],body.cap #sDel,body.cap #pDel,body.cap #zDel,body.cap label[for="restoreFile"]{display:none!important}
 .rolebadge{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--yellow);color:#1B1C1F;font-weight:700;font-size:.75rem}
 .alertrow[data-st="over"]{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
 .alertrow[data-st="over"]:not(.acked){animation:blink 1s steps(2) infinite}
@@ -510,11 +510,6 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 .ugrp.adm .ug-t b{color:#FFC400}.ugrp.adm .ug-t small{color:#BFC2C8}
 .ugrp.adm .ug-s>span{background:#3A3D43;color:#BFC2C8}.ugrp.adm .ug-s em{color:#fff}.ugrp.adm .ug-s .on em{color:#4CD38A}
 .ugrp.adm>summary::before{color:#FFC400}
-.clist{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;margin:10px 0;padding:2px}
-.crow{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer}
-.crow input,.cchk input{width:22px;height:22px;flex:none;margin-top:2px}
-.crow small{display:block;color:var(--muted)}
-.cchk{display:flex;gap:10px;align-items:center;margin:6px 0 10px;font-weight:600}
 </style>
 </head>
 <body>
@@ -655,7 +650,6 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <button type="button" class="btn" data-act="pdfSave">Guardar PDF</button>
         <button type="button" class="btn" data-act="backup">Respaldar datos</button>
         <label class="btn" for="restoreFile" tabindex="0">Restaurar respaldo</label>
-        <button type="button" class="btn danger" data-act="cleanOpen" id="cleanBtn">Borrar pruebas</button>
         <input type="file" accept="application/json,.json" id="restoreFile" class="sr" tabindex="-1">
       </div>
     </div>
@@ -776,16 +770,6 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
   </form>
 </dialog>
 
-<dialog id="dlgClean">
-  <form class="dlg" id="cForm" method="dialog">
-    <h2>Borrar registros de prueba</h2>
-    <p class="muted">Marca las reparaciones de prueba. Se borran sus entradas y salidas de la bitácora en <b>todas las tablets</b>. El personal, las plantas y las áreas <b>no se tocan</b>. Esto no se puede deshacer: si quieres, antes usa <b>Respaldar datos</b>.</p>
-    <div id="cList" class="clist"></div>
-    <label class="cchk"><input type="checkbox" id="cJobs" checked> También borrar las reparaciones marcadas (si no, quedan vacías)</label>
-    <div class="field"><label class="label" for="cWord">Para confirmar escribe BORRAR</label><input id="cWord" autocomplete="off" autocapitalize="characters" placeholder="BORRAR"></div>
-    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button type="button" class="btn" id="cCancel">Cancelar</button><button type="button" class="btn danger" id="cGo">Borrar seleccionados</button></div>
-  </form>
-</dialog>
 <dialog id="dlgName">
   <form class="dlg" id="nForm">
     <h2>¿Quién eres?</h2>
@@ -1356,22 +1340,6 @@ function renderUsers(){const el=$('#usersPanel');if(!el)return;const show=isAdmi
         <div class="udevs">${ds.length?ds.map(d=>{const on=devOn(d,now),me=d.id===devId()&&u.id===SYNC.user.uid;return `<div class="udev"><span class="dot ${on?'on':''}"></span><b>${esc(d.name||d.id)}</b>${(()=>{if(adm)return '<span class="dst ok">Administrador</span>';const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?'<span class="dst ok">Autorizado</span>':st==='no'?'<span class="dst no">Bloqueado</span>':'<span class="dst pend">Pendiente</span>'})()}<span class="muted">${on?'<b style="color:var(--safe)">En uso ahora</b>':'Último uso '+fmtD(d.last)+' '+fmtHM(d.last)} · desde ${fmtD(d.first)}</span>
         ${adm?'':(()=>{const a=L.approvals.get(u.id),st=a&&a.d&&a.d[d.id];return st==='ok'?`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Bloquear</button>`:`<button type="button" class="btn small primary" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="ok">Autorizar</button>${st==='no'?'':`<button type="button" class="btn small danger" data-act="devSet" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}" data-st="no">Rechazar</button>`}`})()}${on||me?'':`<button type="button" class="btn small" data-act="devDel" data-uid="${esc(u.id)}" data-dev="${esc(d.id)}">Quitar de la lista</button>`}</div>`}).join(''):'<p class="muted">Sin dispositivos registrados todavía.</p>'}</div></details>`}).join('')}</div>`)+'</div></details>'}).join('')}`}
 document.addEventListener('toggle',e=>{const d=e.target,k=d&&d.dataset&&d.dataset.uk;if(!k||!d.closest('#usersPanel'))return;if(d.open){uOpen.add(k);if(k==='g0'||k==='g1'){const o=k==='g0'?'g1':'g0';uOpen.delete(o);const x=document.querySelector('#usersPanel [data-uk="'+o+'"]');if(x)x.open=false}}else uOpen.delete(k)},true);
-function cleanGroups(){const m=new Map();for(const v of L.visits.values()){const k=v.job&&L.jobs.has(v.job)?v.job:'';if(!m.has(k))m.set(k,[]);m.get(k).push(v)}
-  for(const j of L.jobs.values())if(!m.has(j.id))m.set(j.id,[]);
-  return [...m.entries()].map(([k,vs])=>({k,vs,j:L.jobs.get(k)})).sort((a,b)=>(a.k?0:1)-(b.k?0:1)||String((b.j&&b.j.start)||'').localeCompare(String((a.j&&a.j.start)||'')))}
-function cleanOpen(){$('#cList').innerHTML=cleanGroups().map(g=>{const ins=g.vs.filter(v=>v.open).length,d=g.vs.length?fmtD(Math.min(...g.vs.map(v=>v.in)))+' → '+fmtD(Math.max(...g.vs.map(v=>v.in))):'sin registros';
-  return `<label class="crow"><input type="checkbox" data-k="${esc(g.k||'-')}"><span><b>${g.j?esc(g.j.name):'Registros sin reparación'}</b><small>${g.j?esc(g.j.pName||'')+(g.j.kind==='insp'?' · inspección':'')+' · '+(g.j.status==='closed'?'cerrada':'activa')+' · ':''}${g.vs.length} ${g.vs.length===1?'registro':'registros'} · ${d}${ins?' · <b style="color:var(--danger,#c62828)">'+ins+' adentro ahora</b>':''}</small></span></label>`}).join('')||'<p class="muted">No hay registros.</p>';
-  $('#cWord').value='';$('#dlgClean').showModal()}
-async function cleanRun(){if($('#cWord').value.trim().toUpperCase()!=='BORRAR'){toast('Escribe BORRAR para confirmar.');return}
-  const ks=[...document.querySelectorAll('#cList input:checked')].map(i=>i.dataset.k==='-'?'':i.dataset.k);if(!ks.length){toast('Marca al menos una reparación.');return}
-  const withJobs=$('#cJobs').checked,set=new Set(ks),out=[];
-  for(const v of L.visits.values()){const k=v.job&&L.jobs.has(v.job)?v.job:'';if(set.has(k))out.push(['visits',v.id])}
-  if(withJobs)for(const k of ks)if(k){out.push(['jobs',k]);for(const c of L.crew.values())if(c.job===k)out.push(['crew',c.id])}
-  $('#cGo').disabled=true;
-  try{for(const [c,id] of out){try{if(idb)await tx(c,'readwrite',t=>t.objectStore(c).delete(id))}catch(e){}L[c].delete(id);fsPush(c,id)}}finally{$('#cGo').disabled=false}
-  $('#dlgClean').close();renderAll();toast('Listo: se borraron '+out.filter(x=>x[0]==='visits').length+' registros'+(withJobs?' y '+out.filter(x=>x[0]==='jobs').length+' reparaciones':'')+'.')}
-$('#cCancel').addEventListener('click',()=>$('#dlgClean').close());
-$('#cGo').addEventListener('click',()=>{if(isAdmin())cleanRun()});
 function renderLog(){
   const adm=isAdmin()&&L.users.size>0,uc=$('#usersChip');uc.hidden=!adm;
   if(adm){const pc=pendingDevs();uc.innerHTML='Quién usa la app'+(pc?` <small class="pbadge">${pc}</small>`:'')}
@@ -1721,7 +1689,6 @@ const ACT={
   toggleOthers(){showOthers=!showOthers;alertSig='';checkAlerts()},
   pickWatch(b){watch=b.dataset.k;ls('ec.watch',watch);showOthers=false;alertSig='';renderBoard();renderRests();checkAlerts();renderWatch();
     toast(watch==='all'?'Viendo a todos los departamentos.':'Viendo solo '+watchName()+'. Las alarmas de otros departamentos no suenan en esta tablet.')},
-  cleanOpen(){if(isAdmin())cleanOpen()},
   goUsers(){logMode='users';setView('bitacora');renderLog()},
   lockCheck(){applyLock();toast(devStatus()==='ok'?'Autorizado.':'Aún no está autorizado. Avísale al administrador.')},
   async devDel(b){const uid=b.dataset.uid,dev=b.dataset.dev,u=L.users.get(uid);if(!u)return;
@@ -1829,6 +1796,7 @@ function fsPush(col,id){
   if(!SYNC.cfg)return;
   if(!SYNC.started){outboxAdd(col,id);syncUI();return}
   const ref=SYNC.fs.collection(SITE+'/'+col).doc(id),row=L[col].get(id);
+  if(col==='users'){(row?ref.set(JSON.parse(JSON.stringify(row))):ref.delete()).catch(()=>{});return}
   SYNC.pending++;syncUI();
   (row?ref.set(JSON.parse(JSON.stringify(row))):ref.delete()).then(
     ()=>{SYNC.pending--;SYNC.err='';SYNC.last=Date.now();syncUI()},

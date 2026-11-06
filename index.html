@@ -583,7 +583,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
         <div class="step">
           <span class="label"><b>5.</b> Descanso al salir</span>
           <div class="chips" id="restChips"></div>
-          <span class="hint">Se ajusta solo al elegir el régimen: 45 → 15, 30 → 30, 15 → 45, Prueba 5 → 2. Puedes cambiarlo si lo necesitas.</span>
+          <span class="hint">Se ajusta solo al elegir el régimen: 45 → 15, 30 → 30, 15 → 45, 2 (P) → 2 (P). Puedes cambiarlo si lo necesitas.</span>
         </div>
       </div>
       <div class="scanside">
@@ -843,10 +843,10 @@ const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
 const COLS=['workers','zones','visits','config','jobs','crew','plants','sites','companies','users','approvals'];
 const L={};COLS.forEach(c=>L[c]=new Map());
 const VIEWS=['adentro','escanear','reparaciones','personal','plantas','bitacora'];
-const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min'],[5,'Prueba 5 min']];
-const RESTS=[[0,'Sin límite'],[15,'15 min'],[30,'30 min'],[45,'45 min'],[2,'Prueba 2 min']];
+const REGS=[[0,'Sin límite'],[45,'45 min'],[30,'30 min'],[15,'15 min'],[2,'2 min (P)']];
+const RESTS=[[0,'Sin límite'],[15,'15 min'],[30,'30 min'],[45,'45 min'],[2,'2 min (P)']];
 // Descanso que se elige solo al tocar un régimen de trabajo
-const PAIR={0:0,45:15,30:30,15:45,5:2};
+const PAIR={0:0,45:15,30:30,15:45,2:2,5:2};
 const ZCOLORS=['#2563EB','#7C3AED','#0D9488','#DB2777','#9A3412','#475569','#15803D','#B45309','#0369A1','#BE123C','#4D7C0F','#A21CAF','#1E3A8A','#065F46','#7F1D1D','#92400E'];
 // Texto blanco o negro según qué tan claro sea el color de la planta
 function inkFor(hex){const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return '#FFFFFF';const n=parseInt(m[1],16),c=[n>>16,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]>.36?'#1E2023':'#FFFFFF'}
@@ -858,6 +858,7 @@ const LOGO=new Image();LOGO.src='logo.png';
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 const cfgNum=(k,d)=>{const v=ls(k);return v===null||v===''||isNaN(+v)?d:+v};
 let selSite=ls('ec.site')||'',selPlant=ls('ec.plant')||'',selZone=ls('ec.cp')||'',selReg=cfgNum('ec.reg',30),selRest=cfgNum('ec.rest',15);
+if(selReg===5)selReg=2;
 if(!RESTS.some(r=>r[0]===selRest))selRest=15;
 
 /* ---------- datos ---------- */
@@ -984,7 +985,7 @@ function dur(ms){const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=
 function status(since,limMin){if(!limMin)return 'ok';const f=(Date.now()-since)/(limMin*60000);return f>=1?'over':f>=.8?'warn':'ok'}
 const pct=(since,limMin)=>limMin?clamp((Date.now()-since)/(limMin*60000)*100,0,100):0;
 const ST={ok:'Dentro del tiempo',warn:'Cerca del límite',over:'Tiempo excedido'};
-const regName=m=>m===5?'Prueba 5 min':m?m+' min':'Sin límite';
+const regName=m=>m===5?'5 min (P)':m===2?'2 min (P)':m?m+' min':'Sin límite';
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3800)}
 let ac;function tone(steps){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();
   const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);let t=ac.currentTime;g.gain.setValueAtTime(.0001,t);

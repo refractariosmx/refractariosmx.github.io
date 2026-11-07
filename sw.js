@@ -1,6 +1,6 @@
 // Guarda la app en la tablet para que abra sin internet.
 // Al publicar una versión nueva, cambia el número de CACHE.
-const CACHE = 'espacios-confinados-v51';
+const CACHE = 'espacios-confinados-v52';
 const CORE = [
   './', 'index.html', 'config-sync.js', 'manifest.webmanifest', 'logo.png', 'icono-ec-192.png', 'icono-ec-512.png', 'icono-ec-maskable-512.png',
   'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js',
@@ -20,15 +20,29 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
+// Archivos de la app (index.html, sw.js, etc.): primero se busca la version nueva en internet
+// (si tarda mas de 4 s o no hay señal, se usa la guardada). Asi una mejora llega con abrir la app una vez.
+// Librerias externas (versiones fijas): se usan las guardadas.
+const fromNet = (r, c, ms) => new Promise(ok => {
+  let done = false; const t = setTimeout(() => { if (!done) { done = true; ok(null); } }, ms);
+  fetch(r, { cache: 'no-cache' }).then(res => { if (res && res.ok) c.put(r, res.clone()).catch(() => {}); if (!done) { done = true; clearTimeout(t); ok(res); } })
+    .catch(() => { if (!done) { done = true; clearTimeout(t); ok(null); } });
+});
 self.addEventListener('fetch', e => {
   const r = e.request;
-  if (r.method !== 'GET' || !r.url.startsWith('http') || !cacheable(new URL(r.url))) return;
+  if (r.method !== 'GET' || !r.url.startsWith('http')) return;
+  const u = new URL(r.url);
+  if (!cacheable(u)) return;
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     const nav = r.mode === 'navigate';
-    const hit = await c.match(r, { ignoreSearch: nav }) || (nav ? await c.match('index.html') : undefined);
-    const net = fetch(r).then(res => { if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()).catch(() => {}); return res; }).catch(() => null);
-    if (hit) { if (new URL(r.url).origin === self.location.origin) e.waitUntil(net); return hit; }
-    return (await net) || Response.error();
+    if (u.origin === self.location.origin) {
+      const res = await fromNet(r, c, 4000);
+      if (res && res.ok) return res;
+      return (await c.match(r, { ignoreSearch: nav })) || (nav ? await c.match('index.html') : undefined) || res || Response.error();
+    }
+    const hit = await c.match(r);
+    if (hit) return hit;
+    try { const res = await fetch(r); if (res && (res.ok || res.type === 'opaque')) c.put(r, res.clone()).catch(() => {}); return res; } catch (x) { return Response.error(); }
   })());
 });

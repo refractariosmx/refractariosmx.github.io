@@ -510,6 +510,7 @@ dialog::backdrop{background:rgba(10,11,12,.65)}
 .ugrp.adm .ug-t b{color:#FFC400}.ugrp.adm .ug-t small{color:#BFC2C8}
 .ugrp.adm .ug-s>span{background:#3A3D43;color:#BFC2C8}.ugrp.adm .ug-s em{color:#fff}.ugrp.adm .ug-s .on em{color:#4CD38A}
 .ugrp.adm>summary::before{color:#FFC400}
+.updbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#26282C;color:#fff;padding:10px 14px;border-radius:12px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.3);font-weight:600;max-width:calc(100% - 32px)}
 </style>
 </head>
 <body>
@@ -1934,7 +1935,21 @@ addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
   syncInit();
   setTimeout(()=>{if(navigator.onLine!==false)ensurePdfLib().catch(()=>{})},4000);
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if('serviceWorker' in navigator){
+    const hadCtl=!!navigator.serviceWorker.controller;let reloading=false;
+    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+      const chk=()=>{try{reg.update()}catch(e){}};
+      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')chk()});
+      addEventListener('online',chk);setInterval(chk,15*60000);
+    }).catch(()=>{});
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloading)return;
+      const go=()=>{if(reloading)return;reloading=true;location.reload()};
+      const busy=()=>document.querySelector('dialog[open]')||(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+      if(!busy()){toast('Nueva versión de la app. Actualizando…');setTimeout(go,1200);return}
+      const bar=document.createElement('div');bar.className='updbar';bar.innerHTML='Hay una versión nueva de la app <button type="button" class="btn small">Actualizar</button>';
+      bar.querySelector('button').onclick=go;document.body.appendChild(bar);
+      const t=setInterval(()=>{if(!busy()){clearInterval(t);go()}},3000)});
+  }
 })();
 </script>
 </body>
